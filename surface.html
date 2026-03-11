@@ -303,6 +303,7 @@ function renderTabs() {
       localStorage.setItem('cb_view', id);
       renderTabs();
       renderGrid();
+      deckSync(); // update deck to show new view's buttons
     });
     tabs.appendChild(tab);
   });
@@ -453,27 +454,25 @@ function setDeckUI(connected, modelName) {
 }
 
 // ── Build the button→key mapping and push images ──────────────────
+// Deck mirrors the ACTIVE VIEW in order — simple and predictable
 function deckSync() {
   if (!deckDevice || !appState) return;
 
-  // Flatten ALL buttons across all views (deduplicated by id)
-  const seen = new Set();
-  const allBtns = [];
-  Object.values(appState.views).forEach(view => {
-    (view.buttonIds || []).forEach(id => {
-      if (!seen.has(id)) {
-        seen.add(id);
-        const btn = appState.buttons.find(b => b.id === id);
-        if (btn) allBtns.push(btn);
-      }
+  // Get buttons for the current active view, in order
+  const viewBtns = [];
+  if (activeView && appState.views[activeView]) {
+    const ids = appState.views[activeView].buttonIds || [];
+    ids.forEach(id => {
+      const btn = appState.buttons.find(b => b.id === id);
+      if (btn) viewBtns.push(btn);
     });
-  });
+  }
 
   deckButtons = [];
   const total = deckModel.totalKeys;
 
   for (let i = 0; i < total; i++) {
-    const btn = allBtns[i] || null;
+    const btn = viewBtns[i] || null;
     deckButtons[i] = btn;
     if (btn) btn._deckKey = i;
     drawDeckKey(i, btn);
@@ -481,6 +480,8 @@ function deckSync() {
 }
 
 // ── Draw a key using Canvas → send image over HID ────────────────
+// Simple mode: dark background + white text
+// If btn.deckColor is true, fill background with btn.color instead
 async function drawDeckKey(keyIndex, btn) {
   if (!deckDevice) return;
 
@@ -490,46 +491,42 @@ async function drawDeckKey(keyIndex, btn) {
   const ctx = canvas.getContext('2d');
 
   if (btn) {
-    // Background — button colour darkened
-    ctx.fillStyle = darken(btn.color, 0.35);
+    // Background: colour fill if enabled, otherwise near-black
+    ctx.fillStyle = btn.deckColor ? btn.color : '#111418';
     ctx.fillRect(0, 0, size, size);
 
-    // Colour bar at top
-    ctx.fillStyle = btn.color;
-    ctx.fillRect(0, 0, size, Math.max(4, size * 0.06));
-
-    // Label text — word wrap
-    ctx.fillStyle = '#ffffff';
+    // White text, centred, word-wrapped across up to 3 lines
+    ctx.fillStyle = btn.deckColor ? '#000000' : '#ffffff';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+    const fontSize = Math.round(size * 0.2);
+    ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+
     const words = btn.label.toUpperCase().split(' ');
-    const lineH = size * 0.22;
-    const fontSize = Math.round(size * 0.18);
-    ctx.font = `700 ${fontSize}px "Barlow Condensed", sans-serif`;
+    // Build lines — max 8 chars per line
+    const lines = [];
+    let current = '';
+    words.forEach(w => {
+      if (!current) { current = w; }
+      else if ((current + ' ' + w).length <= 8) { current += ' ' + w; }
+      else { lines.push(current); current = w; }
+    });
+    if (current) lines.push(current);
 
-    // Simple two-line wrap
-    let lines = [];
-    if (words.length === 1) {
-      lines = [words[0]];
-    } else {
-      const mid = Math.ceil(words.length / 2);
-      lines = [words.slice(0, mid).join(' '), words.slice(mid).join(' ')];
-    }
-
+    const lineH = fontSize * 1.25;
     const totalH = lines.length * lineH;
     const startY = (size - totalH) / 2 + lineH / 2;
     lines.forEach((line, i) => {
-      ctx.fillText(line, size / 2, startY + i * lineH, size - 8);
+      ctx.fillText(line, size / 2, startY + i * lineH, size - 6);
     });
 
   } else {
-    // Empty key — dark blank
-    ctx.fillStyle = '#0d0f12';
+    // Empty key — blank
+    ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, size, size);
   }
 
-  // Rotate 180° — required for StreamDeck MK2, XL, Plus, Original2
-  // (Original BMP models handle flip inside canvasToBMP already)
+  // Rotate 180° for JPEG models (MK2, XL, Plus, Original2)
   const finalCanvas = document.createElement('canvas');
   finalCanvas.width = finalCanvas.height = size;
   const fctx = finalCanvas.getContext('2d');
@@ -546,19 +543,20 @@ async function deckFlash(keyIndex) {
   const btn = deckButtons[keyIndex];
   if (!btn) return;
 
-  // Draw bright flash
+  // Flash: invert — white bg, dark text
   const size = deckModel.keySize;
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = size;
   const ctx = canvas.getContext('2d');
-  ctx.fillStyle = btn.color;
+  ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, size, size);
-  ctx.fillStyle = '#000';
+  ctx.fillStyle = '#000000';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = `700 ${Math.round(size*0.18)}px "Barlow Condensed", sans-serif`;
-  ctx.fillText(btn.label.toUpperCase(), size/2, size/2, size-8);
-  // Rotate 180° for JPEG models
+  const fontSize = Math.round(size * 0.2);
+  ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+  ctx.fillText(btn.label.toUpperCase(), size / 2, size / 2, size - 6);
+
   const fc = document.createElement('canvas');
   fc.width = fc.height = size;
   const fctx2 = fc.getContext('2d');
@@ -566,7 +564,7 @@ async function deckFlash(keyIndex) {
   fctx2.drawImage(canvas, 0, 0);
   await sendKeyImage(keyIndex, fc);
 
-  // Restore after 300ms
+  // Restore normal after 300ms
   setTimeout(() => drawDeckKey(keyIndex, btn), 300);
 }
 
@@ -625,11 +623,12 @@ function onDeckInput(event) {
 
   const data = new Uint8Array(event.data.buffer);
 
-  // StreamDeck v2 key data layout (report ID already stripped by WebHID):
-  // byte 0: message type (0x01)
-  // bytes 1-3: padding
-  // bytes 4+: key states, one byte per key (1=pressed, 0=released)
-  const keyOffset = 4;
+  // StreamDeck key data layout (WebHID already strips the report ID byte):
+  // byte 0: 0x01 (message type, always present)
+  // bytes 1-2: padding  
+  // byte 3+: key states, one byte per key (1=pressed, 0=released)
+  // Note: offset 3 is correct for all known StreamDeck models via WebHID
+  const keyOffset = 3;
   const total = deckModel.totalKeys;
   for (let i = 0; i < total; i++) {
     const pressed = data[i + keyOffset] === 1;

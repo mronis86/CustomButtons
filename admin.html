@@ -411,6 +411,12 @@
         <div class="field-group">
           <div class="field-lbl">Colour</div>
           <div class="swatches" id="edit-swatches"></div>
+          <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" id="edit-deckcolor" style="accent-color:var(--accent);width:14px;height:14px;cursor:pointer;">
+            <label for="edit-deckcolor" style="font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:0.1em;color:var(--muted);cursor:pointer;text-transform:uppercase;">
+              Fill StreamDeck key with colour
+            </label>
+          </div>
         </div>
         <div class="edit-actions">
           <button class="action-btn primary" id="edit-apply">APPLY</button>
@@ -680,10 +686,11 @@ function renderBtnGrid() {
 // ── Edit panel ──
 function openEditPanel(btn) {
   editDraft = { ...btn };
-  document.getElementById('edit-label').value = btn.label;
-  document.getElementById('edit-page').value  = btn.page;
-  document.getElementById('edit-row').value   = btn.row ?? 0;
-  document.getElementById('edit-col').value   = btn.col ?? 0;
+  document.getElementById('edit-label').value    = btn.label;
+  document.getElementById('edit-page').value     = btn.page;
+  document.getElementById('edit-row').value      = btn.row ?? 0;
+  document.getElementById('edit-col').value      = btn.col ?? 0;
+  document.getElementById('edit-deckcolor').checked = btn.deckColor || false;
 
   // Set active swatch
   document.querySelectorAll('#edit-swatches .swatch').forEach(s => {
@@ -730,6 +737,7 @@ function applyEdit() {
   if (!editDraft) return;
   const idx = state.buttons.findIndex(b => b.id === editDraft.id);
   if (idx < 0) return;
+  editDraft.deckColor = document.getElementById('edit-deckcolor').checked;
   state.buttons[idx] = { ...editDraft };
   closeEditPanel();
   render();
