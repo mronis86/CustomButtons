@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>COMPANION — ADMIN</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700;900&display=swap');
+
+  :root {
+    --bg:       #080a0c;
+    --s1:       #0f1115;
+    --s2:       #161920;
+    --s3:       #1e222b;
+    --border:   #252a35;
+    --border2:  #2f3545;
+    --text:     #bdc4d4;
+    --muted:    #4e5668;
+    --accent:   #00d4ff;
+    --warn:     #ffb700;
+    --danger:   #ff3b3b;
+    --success:  #00e676;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* scanlines */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px);
+    pointer-events: none;
+    z-index: 9000;
+  }
+
+  /* ── TOPBAR ── */
+  .topbar {
+    height: 52px;
+    background: var(--s1);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    flex-shrink: 0;
+  }
+
+  .logo {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .logo-badge {
+    background: var(--accent);
+    color: #000;
+    font-size: 9px;
+    padding: 2px 6px;
+    letter-spacing: 0.15em;
+    font-weight: 700;
+  }
+
+  .topbar-spacer { flex: 1; }
+
+  .server-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+  }
+
+  .server-row label { color: var(--muted); }
+
+  input.mono {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    padding: 4px 8px;
+    outline: none;
+    transition: border-color 0.15s;
+    height: 28px;
+  }
+
+  input.mono:focus { border-color: var(--accent); }
+
+  .tb-btn {
+    height: 28px;
+    padding: 0 12px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.12s;
+    white-space: nowrap;
+  }
+
+  .tb-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .tb-btn.primary { background: var(--accent); border-color: var(--accent); color: #000; }
+  .tb-btn.primary:hover { background: #33ddff; }
+
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: all 0.3s;
+    flex-shrink: 0;
+  }
+  .status-dot.ok  { background: var(--success); box-shadow: 0 0 6px var(--success); }
+  .status-dot.err { background: var(--danger);  box-shadow: 0 0 6px var(--danger); }
+
+  /* ── BODY LAYOUT ── */
+  .body {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    flex: 1;
+    overflow: hidden;
+    height: calc(100vh - 52px);
+  }
+
+  /* ── LEFT PANEL — button list ── */
+  .panel-left {
+    background: var(--s1);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .panel-title {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .btn-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .btn-list::-webkit-scrollbar { width: 4px; }
+  .btn-list::-webkit-scrollbar-track { background: transparent; }
+  .btn-list::-webkit-scrollbar-thumb { background: var(--border2); }
+
+  /* ── BUTTON ROW ── */
+  .btn-row {
+    background: var(--s2);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 0;
+    cursor: pointer;
+    transition: border-color 0.1s;
+    position: relative;
+    user-select: none;
+  }
+
+  .btn-row:hover { border-color: var(--border2); }
+  .btn-row.selected { border-color: var(--accent); }
+
+  .btn-row-color {
+    width: 4px;
+    align-self: stretch;
+    flex-shrink: 0;
+  }
+
+  .btn-row-info {
+    flex: 1;
+    padding: 8px 10px;
+    min-width: 0;
+  }
+
+  .btn-row-label {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .btn-row-meta {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .btn-row-views {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    padding: 0 8px 0 0;
+  }
+
+  .view-chip {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    padding: 2px 5px;
+    letter-spacing: 0.08em;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    background: var(--s3);
+    white-space: nowrap;
+  }
+
+  .btn-row-del {
+    width: 32px;
+    align-self: stretch;
+    background: transparent;
+    border: none;
+    border-left: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.1s;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn-row-del:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
+
+  /* ── RIGHT PANEL — editor ── */
+  .panel-right {
+    display: grid;
+    grid-template-rows: 1fr 1fr;
+    overflow: hidden;
+  }
+
+  /* ── BUTTON EDITOR ── */
+  .editor-section {
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .editor-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .empty-state {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  /* form fields */
+  .field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .field-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  input.field, select.field {
+    background: var(--s2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 15px;
+    padding: 7px 10px;
+    outline: none;
+    transition: border-color 0.15s;
+    width: 100%;
+  }
+
+  input.field:focus, select.field:focus { border-color: var(--accent); }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  /* color picker */
+  .swatches {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .swatch {
+    width: 24px; height: 24px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: transform 0.1s, border-color 0.1s;
+  }
+
+  .swatch:hover { transform: scale(1.15); }
+  .swatch.active { border-color: #fff; transform: scale(1.1); }
+
+  /* preview */
+  .btn-preview {
+    width: 120px;
+    height: 120px;
+    background: var(--s2);
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .btn-preview::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: var(--preview-color, var(--accent));
+  }
+
+  .btn-preview-label {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #fff;
+    text-align: center;
+    padding: 0 8px;
+    line-height: 1.1;
+  }
+
+  .btn-preview-meta {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .editor-top-row {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+  }
+
+  .editor-fields { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+
+  .form-actions {
+    display: flex;
+    gap: 8px;
+    padding-top: 4px;
+  }
+
+  .action-btn {
+    padding: 8px 20px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+
+  .action-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .action-btn.primary { background: var(--accent); border-color: var(--accent); color: #000; }
+  .action-btn.primary:hover { background: #33ddff; }
+
+  /* ── VIEWS SECTION ── */
+  .views-section {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .views-body {
+    flex: 1;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 220px 1fr;
+  }
+
+  /* view list */
+  .view-list-wrap {
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .view-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .view-item {
+    padding: 8px 10px;
+    background: var(--s2);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    transition: border-color 0.1s;
+  }
+
+  .view-item:hover { border-color: var(--border2); }
+  .view-item.selected { border-color: var(--accent); }
+
+  .view-item-name {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #fff;
+  }
+
+  .view-item-count {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  .view-del-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 2px;
+    line-height: 1;
+    transition: color 0.1s;
+  }
+
+  .view-del-btn:hover { color: var(--danger); }
+
+  /* view assignment */
+  .view-assign-wrap {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .view-assign-header {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .assign-grid {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-content: flex-start;
+  }
+
+  /* assignable button tile */
+  .assign-tile {
+    width: 100px;
+    height: 100px;
+    background: var(--s2);
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.1s, opacity 0.1s;
+    user-select: none;
+  }
+
+  .assign-tile::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--tile-color, var(--accent));
+  }
+
+  .assign-tile.assigned {
+    border-color: var(--tile-color, var(--accent));
+    box-shadow: inset 0 0 0 1px var(--tile-color, var(--accent));
+  }
+
+  .assign-tile.assigned::after {
+    content: '✓';
+    position: absolute;
+    top: 5px;
+    right: 7px;
+    font-size: 11px;
+    color: var(--tile-color, var(--accent));
+    font-weight: 700;
+  }
+
+  .assign-tile-label {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #fff;
+    text-align: center;
+    padding: 0 6px;
+    line-height: 1.1;
+  }
+
+  .assign-tile-meta {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+  }
+
+  /* ── NEW VIEW INPUT ── */
+  .new-view-row {
+    padding: 8px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .new-view-row input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 5px 8px;
+    outline: none;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .new-view-row input:focus { border-color: var(--accent); }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--s2);
+    border: 1px solid var(--border);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    padding: 10px 16px;
+    z-index: 9999;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+  }
+
+  #toast.show { opacity: 1; transform: translateY(0); }
+  #toast.ok  { border-color: var(--success); color: var(--success); }
+  #toast.err { border-color: var(--danger);  color: var(--danger); }
+  #toast.inf { border-color: var(--accent);  color: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">
+    COMPANION
+    <div class="logo-badge">ADMIN</div>
+  </div>
+
+  <div class="server-row">
+    <label>SERVER</label>
+    <input class="mono" type="url" id="server-url" placeholder="https://your-app.up.railway.app" style="width:280px">
+    <label>SECRET</label>
+    <input class="mono" type="password" id="api-secret" placeholder="optional" style="width:130px">
+    <div class="status-dot" id="status-dot"></div>
+    <button class="tb-btn" id="btn-connect">CONNECT</button>
+  </div>
+
+  <div class="topbar-spacer"></div>
+  <button class="tb-btn primary" id="btn-push">PUSH TO SERVER</button>
+</div>
+
+<!-- BODY -->
+<div class="body">
+
+  <!-- LEFT: button list -->
+  <div class="panel-left">
+    <div class="panel-header">
+      <div class="panel-title">// BUTTONS</div>
+      <button class="tb-btn" id="btn-new">+ NEW BUTTON</button>
+    </div>
+    <div class="btn-list" id="btn-list"></div>
+  </div>
+
+  <!-- RIGHT: editor + views -->
+  <div class="panel-right">
+
+    <!-- EDITOR -->
+    <div class="editor-section">
+      <div class="panel-header">
+        <div class="panel-title">// BUTTON EDITOR</div>
+      </div>
+      <div class="editor-body" id="editor-body">
+        <div class="empty-state">SELECT A BUTTON TO EDIT</div>
+      </div>
+    </div>
+
+    <!-- VIEWS -->
+    <div class="views-section">
+      <div class="panel-header">
+        <div class="panel-title">// VIEWS — assign buttons to named views</div>
+      </div>
+      <div class="views-body">
+
+        <!-- view list -->
+        <div class="view-list-wrap">
+          <div class="view-list" id="view-list"></div>
+          <div class="new-view-row">
+            <input type="text" id="new-view-name" placeholder="VIEW NAME" maxlength="24">
+            <button class="tb-btn" id="btn-add-view">ADD</button>
+          </div>
+        </div>
+
+        <!-- assignment grid -->
+        <div class="view-assign-wrap">
+          <div class="view-assign-header">
+            <span id="assign-label">SELECT A VIEW TO ASSIGN BUTTONS</span>
+            <span id="assign-count"></span>
+          </div>
+          <div class="assign-grid" id="assign-grid"></div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ─── CONSTANTS ───────────────────────────────────────────────────────────────
+const SWATCHES = [
+  '#e63946','#ff6b35','#f4a261','#e9c46a','#52b788',
+  '#00e676','#00d4ff','#457b9d','#a855f7','#ec4899',
+  '#ffffff','#7c8499',
+];
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let serverUrl = localStorage.getItem('cb_admin_server') || '';
+let apiSecret  = localStorage.getItem('cb_admin_secret') || '';
+
+let state = loadLocal();
+// state = { buttons: [...], views: { id: { name, buttonIds: [] } } }
+
+let selectedBtnId  = null;
+let selectedViewId = null;
+let editDraft      = null; // working copy of the selected button
+
+function defaultState() {
+  return {
+    buttons: [
+      { id: uid(), label: 'CAM 1',  page: 1, bank: 1, color: '#e63946' },
+      { id: uid(), label: 'CAM 2',  page: 1, bank: 2, color: '#457b9d' },
+      { id: uid(), label: 'WIDE',   page: 1, bank: 3, color: '#52b788' },
+      { id: uid(), label: 'TITLES', page: 1, bank: 4, color: '#e9c46a' },
+      { id: uid(), label: 'BREAK',  page: 1, bank: 5, color: '#f4a261' },
+      { id: uid(), label: 'STREAM', page: 2, bank: 1, color: '#a855f7' },
+    ],
+    views: {},
+  };
+}
+
+function loadLocal() {
+  try {
+    const saved = localStorage.getItem('cb_admin_state');
+    return saved ? JSON.parse(saved) : defaultState();
+  } catch { return defaultState(); }
+}
+
+function saveLocal() {
+  localStorage.setItem('cb_admin_state', JSON.stringify(state));
+}
+
+function uid() { return Math.random().toString(36).slice(2, 9); }
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+document.getElementById('server-url').value = serverUrl;
+document.getElementById('api-secret').value = apiSecret;
+
+document.getElementById('server-url').addEventListener('change', e => {
+  serverUrl = e.target.value.trim().replace(/\/$/, '');
+  localStorage.setItem('cb_admin_server', serverUrl);
+});
+document.getElementById('api-secret').addEventListener('change', e => {
+  apiSecret = e.target.value.trim();
+  localStorage.setItem('cb_admin_secret', apiSecret);
+});
+
+document.getElementById('btn-connect').addEventListener('click', connect);
+document.getElementById('btn-push').addEventListener('click', pushToServer);
+document.getElementById('btn-new').addEventListener('click', newButton);
+document.getElementById('btn-add-view').addEventListener('click', addView);
+document.getElementById('new-view-name').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addView();
+});
+
+render();
+if (serverUrl) setTimeout(connect, 400);
+
+// ─── CONNECTION ───────────────────────────────────────────────────────────────
+async function connect() {
+  if (!serverUrl) { toast('Enter a server URL first', 'err'); return; }
+  setDot('');
+  try {
+    await apiFetch('/health');
+    setDot('ok');
+    toast('Connected', 'ok');
+    await pullFromServer();
+  } catch(e) {
+    setDot('err');
+    toast('Cannot reach server', 'err');
+  }
+}
+
+async function pullFromServer() {
+  try {
+    const r = await apiFetch('/state');
+    const data = await r.json();
+    if (data.buttons && data.views) {
+      state = data;
+      saveLocal();
+      render();
+      toast('Pulled from server', 'inf');
+    }
+  } catch(e) {
+    console.warn('pull failed', e);
+  }
+}
+
+async function pushToServer() {
+  saveLocal();
+  if (!serverUrl) { toast('Saved locally (no server)', 'inf'); return; }
+  try {
+    await apiFetch('/state', { method: 'PUT', body: JSON.stringify(state) });
+    toast('Pushed to server ✓', 'ok');
+  } catch(e) {
+    toast('Push failed: ' + e.message, 'err');
+  }
+}
+
+async function apiFetch(path, opts = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (apiSecret) headers['x-api-secret'] = apiSecret;
+  return fetch(serverUrl + path, { ...opts, headers });
+}
+
+function setDot(cls) {
+  const d = document.getElementById('status-dot');
+  d.className = 'status-dot ' + cls;
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function render() {
+  renderBtnList();
+  renderEditor();
+  renderViewList();
+  renderAssignGrid();
+}
+
+// ── Button list ──
+function renderBtnList() {
+  const el = document.getElementById('btn-list');
+  el.innerHTML = '';
+
+  state.buttons.forEach(btn => {
+    const row = document.createElement('div');
+    row.className = 'btn-row' + (btn.id === selectedBtnId ? ' selected' : '');
+    row.dataset.id = btn.id;
+
+    const bar = document.createElement('div');
+    bar.className = 'btn-row-color';
+    bar.style.background = btn.color;
+
+    const info = document.createElement('div');
+    info.className = 'btn-row-info';
+    info.innerHTML = `
+      <div class="btn-row-label">${esc(btn.label)}</div>
+      <div class="btn-row-meta">PAGE ${btn.page} · BANK ${btn.bank}</div>
+    `;
+
+    // view chips
+    const chips = document.createElement('div');
+    chips.className = 'btn-row-views';
+    Object.values(state.views).forEach(v => {
+      if (v.buttonIds.includes(btn.id)) {
+        const c = document.createElement('div');
+        c.className = 'view-chip';
+        c.textContent = v.name;
+        chips.appendChild(c);
+      }
+    });
+
+    const del = document.createElement('button');
+    del.className = 'btn-row-del';
+    del.textContent = '×';
+    del.title = 'Delete button';
+    del.addEventListener('click', e => { e.stopPropagation(); deleteButton(btn.id); });
+
+    row.appendChild(bar);
+    row.appendChild(info);
+    row.appendChild(chips);
+    row.appendChild(del);
+
+    row.addEventListener('click', () => selectButton(btn.id));
+    el.appendChild(row);
+  });
+}
+
+// ── Editor ──
+function renderEditor() {
+  const body = document.getElementById('editor-body');
+
+  if (!selectedBtnId || !editDraft) {
+    body.innerHTML = '<div class="empty-state">SELECT A BUTTON TO EDIT</div>';
+    return;
+  }
+
+  body.innerHTML = '';
+
+  // top row: preview + fields
+  const topRow = document.createElement('div');
+  topRow.className = 'editor-top-row';
+
+  // preview
+  const preview = document.createElement('div');
+  preview.className = 'btn-preview';
+  preview.id = 'btn-preview';
+  preview.style.setProperty('--preview-color', editDraft.color);
+  preview.innerHTML = `
+    <div class="btn-preview-label" id="preview-label">${esc(editDraft.label)}</div>
+    <div class="btn-preview-meta" id="preview-meta">P${editDraft.page} B${editDraft.bank}</div>
+  `;
+
+  // fields
+  const fields = document.createElement('div');
+  fields.className = 'editor-fields';
+
+  // Label
+  const labelGroup = mkFieldGroup('LABEL');
+  const labelInput = mkInput('text', editDraft.label, 'BUTTON LABEL');
+  labelInput.maxLength = 14;
+  labelInput.addEventListener('input', () => {
+    editDraft.label = labelInput.value.toUpperCase();
+    document.getElementById('preview-label').textContent = editDraft.label;
+  });
+  labelGroup.appendChild(labelInput);
+  fields.appendChild(labelGroup);
+
+  // Page + Bank
+  const pbRow = document.createElement('div');
+  pbRow.className = 'field-row';
+
+  const pageGroup = mkFieldGroup('COMPANION PAGE');
+  const pageInput = mkInput('number', editDraft.page);
+  pageInput.min = 1; pageInput.max = 99;
+  pageInput.addEventListener('input', () => {
+    editDraft.page = parseInt(pageInput.value) || 1;
+    document.getElementById('preview-meta').textContent = `P${editDraft.page} B${editDraft.bank}`;
+  });
+  pageGroup.appendChild(pageInput);
+
+  const bankGroup = mkFieldGroup('COMPANION BANK');
+  const bankInput = mkInput('number', editDraft.bank);
+  bankInput.min = 1; bankInput.max = 32;
+  bankInput.addEventListener('input', () => {
+    editDraft.bank = parseInt(bankInput.value) || 1;
+    document.getElementById('preview-meta').textContent = `P${editDraft.page} B${editDraft.bank}`;
+  });
+  bankGroup.appendChild(bankInput);
+
+  pbRow.appendChild(pageGroup);
+  pbRow.appendChild(bankGroup);
+  fields.appendChild(pbRow);
+
+  topRow.appendChild(preview);
+  topRow.appendChild(fields);
+  body.appendChild(topRow);
+
+  // Color
+  const colorGroup = mkFieldGroup('COLOR');
+  const swatchWrap = document.createElement('div');
+  swatchWrap.className = 'swatches';
+  SWATCHES.forEach(c => {
+    const s = document.createElement('div');
+    s.className = 'swatch' + (c === editDraft.color ? ' active' : '');
+    s.style.background = c;
+    s.addEventListener('click', () => {
+      swatchWrap.querySelectorAll('.swatch').forEach(x => x.classList.remove('active'));
+      s.classList.add('active');
+      editDraft.color = c;
+      document.getElementById('btn-preview').style.setProperty('--preview-color', c);
+    });
+    swatchWrap.appendChild(s);
+  });
+  colorGroup.appendChild(swatchWrap);
+  body.appendChild(colorGroup);
+
+  // Actions
+  const actions = document.createElement('div');
+  actions.className = 'form-actions';
+
+  const saveBtn = document.createElement('button');
+  saveBtn.className = 'action-btn primary';
+  saveBtn.textContent = 'APPLY CHANGES';
+  saveBtn.addEventListener('click', applyEdit);
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'action-btn';
+  cancelBtn.textContent = 'CANCEL';
+  cancelBtn.addEventListener('click', () => {
+    editDraft = null;
+    selectedBtnId = null;
+    render();
+  });
+
+  actions.appendChild(saveBtn);
+  actions.appendChild(cancelBtn);
+  body.appendChild(actions);
+}
+
+function mkFieldGroup(labelText) {
+  const g = document.createElement('div');
+  g.className = 'field-group';
+  const l = document.createElement('div');
+  l.className = 'field-label';
+  l.textContent = labelText;
+  g.appendChild(l);
+  return g;
+}
+
+function mkInput(type, value, placeholder = '') {
+  const i = document.createElement('input');
+  i.type = type;
+  i.value = value;
+  i.placeholder = placeholder;
+  i.className = 'field';
+  return i;
+}
+
+// ── View list ──
+function renderViewList() {
+  const el = document.getElementById('view-list');
+  el.innerHTML = '';
+
+  Object.entries(state.views).forEach(([id, view]) => {
+    const item = document.createElement('div');
+    item.className = 'view-item' + (id === selectedViewId ? ' selected' : '');
+
+    const name = document.createElement('div');
+    name.className = 'view-item-name';
+    name.textContent = view.name;
+
+    const count = document.createElement('div');
+    count.className = 'view-item-count';
+    count.textContent = view.buttonIds.length + ' BTN';
+
+    const del = document.createElement('button');
+    del.className = 'view-del-btn';
+    del.textContent = '×';
+    del.title = 'Delete view';
+    del.addEventListener('click', e => { e.stopPropagation(); deleteView(id); });
+
+    item.appendChild(name);
+    item.appendChild(count);
+    item.appendChild(del);
+    item.addEventListener('click', () => selectView(id));
+    el.appendChild(item);
+  });
+}
+
+// ── Assign grid ──
+function renderAssignGrid() {
+  const grid = document.getElementById('assign-grid');
+  const label = document.getElementById('assign-label');
+  const countEl = document.getElementById('assign-count');
+  grid.innerHTML = '';
+
+  if (!selectedViewId || !state.views[selectedViewId]) {
+    label.textContent = 'SELECT A VIEW TO ASSIGN BUTTONS';
+    countEl.textContent = '';
+    return;
+  }
+
+  const view = state.views[selectedViewId];
+  label.textContent = view.name;
+  countEl.textContent = view.buttonIds.length + ' ASSIGNED';
+
+  state.buttons.forEach(btn => {
+    const assigned = view.buttonIds.includes(btn.id);
+    const tile = document.createElement('div');
+    tile.className = 'assign-tile' + (assigned ? ' assigned' : '');
+    tile.style.setProperty('--tile-color', btn.color);
+    tile.innerHTML = `
+      <div class="assign-tile-label">${esc(btn.label)}</div>
+      <div class="assign-tile-meta">P${btn.page} B${btn.bank}</div>
+    `;
+    tile.addEventListener('click', () => toggleAssign(btn.id));
+    grid.appendChild(tile);
+  });
+
+  if (state.buttons.length === 0) {
+    grid.innerHTML = '<div style="color:var(--muted);font-family:\'Share Tech Mono\',monospace;font-size:11px;letter-spacing:.1em;padding:20px;">NO BUTTONS CREATED YET</div>';
+  }
+}
+
+// ─── ACTIONS ─────────────────────────────────────────────────────────────────
+function selectButton(id) {
+  selectedBtnId = id;
+  editDraft = { ...state.buttons.find(b => b.id === id) };
+  render();
+}
+
+function applyEdit() {
+  const idx = state.buttons.findIndex(b => b.id === selectedBtnId);
+  if (idx < 0) return;
+  state.buttons[idx] = { ...editDraft };
+  saveLocal();
+  toast('Button updated', 'ok');
+  render();
+}
+
+function newButton() {
+  const btn = {
+    id: uid(),
+    label: 'NEW BTN',
+    page: 1,
+    bank: state.buttons.length + 1,
+    color: SWATCHES[Math.floor(Math.random() * SWATCHES.length)],
+  };
+  state.buttons.push(btn);
+  saveLocal();
+  selectButton(btn.id);
+}
+
+function deleteButton(id) {
+  state.buttons = state.buttons.filter(b => b.id !== id);
+  // remove from all views
+  Object.values(state.views).forEach(v => {
+    v.buttonIds = v.buttonIds.filter(bid => bid !== id);
+  });
+  if (selectedBtnId === id) { selectedBtnId = null; editDraft = null; }
+  saveLocal();
+  render();
+  toast('Button deleted', 'inf');
+}
+
+function addView() {
+  const input = document.getElementById('new-view-name');
+  const name = input.value.trim().toUpperCase();
+  if (!name) return;
+  if (Object.values(state.views).some(v => v.name === name)) {
+    toast('View already exists', 'err'); return;
+  }
+  const id = uid();
+  state.views[id] = { name, buttonIds: [] };
+  input.value = '';
+  saveLocal();
+  selectView(id);
+}
+
+function deleteView(id) {
+  delete state.views[id];
+  if (selectedViewId === id) selectedViewId = null;
+  saveLocal();
+  render();
+  toast('View deleted', 'inf');
+}
+
+function selectView(id) {
+  selectedViewId = id;
+  render();
+}
+
+function toggleAssign(btnId) {
+  if (!selectedViewId) return;
+  const view = state.views[selectedViewId];
+  const idx = view.buttonIds.indexOf(btnId);
+  if (idx >= 0) view.buttonIds.splice(idx, 1);
+  else view.buttonIds.push(btnId);
+  saveLocal();
+  renderBtnList();
+  renderViewList();
+  renderAssignGrid();
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+let toastTimer;
+function toast(msg, type = 'inf') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = ''; }, 2600);
+}
+</script>
+</body>
+</html>

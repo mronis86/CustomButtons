@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>COMPANION REMOTE</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700;900&display=swap');
+
+  :root {
+    --bg:      #080a0c;
+    --s1:      #0f1115;
+    --s2:      #161920;
+    --border:  #252a35;
+    --text:    #bdc4d4;
+    --muted:   #4e5668;
+    --accent:  #00d4ff;
+    --danger:  #ff3b3b;
+    --success: #00e676;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* scanlines */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px);
+    pointer-events: none;
+    z-index: 9000;
+  }
+
+  /* ── TOPBAR ── */
+  .topbar {
+    height: 46px;
+    background: var(--s1);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 12px;
+    flex-shrink: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .divider {
+    width: 1px; height: 22px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+
+  .view-tabs {
+    display: flex;
+    gap: 4px;
+    flex: 1;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .view-tabs::-webkit-scrollbar { display: none; }
+
+  .view-tab {
+    height: 28px;
+    padding: 0 14px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.12s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .view-tab:hover { color: var(--text); border-color: var(--border); }
+  .view-tab.active { background: var(--accent); border-color: var(--accent); color: #000; }
+
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: all 0.3s;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+  .status-dot.ok  { background: var(--success); box-shadow: 0 0 5px var(--success); }
+  .status-dot.err { background: var(--danger); box-shadow: 0 0 5px var(--danger); }
+  .status-dot.loading {
+    background: var(--accent);
+    animation: pulse 1s infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.2; } }
+
+  /* ── GRID AREA ── */
+  .grid-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px;
+    position: relative;
+  }
+
+  .grid-area::before {
+    content: '';
+    position: fixed;
+    inset: 46px 0 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 48px 48px;
+    opacity: 0.15;
+    pointer-events: none;
+  }
+
+  .button-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 140px));
+    gap: 10px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── TRIGGER BUTTON ── */
+  .trig-btn {
+    aspect-ratio: 1;
+    background: var(--s2);
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.08s, box-shadow 0.1s;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  .trig-btn::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: var(--btn-color, var(--accent));
+    transition: height 0.1s;
+  }
+  .trig-btn:hover::before { height: 6px; }
+
+  .trig-btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--btn-color, var(--accent));
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.05s;
+  }
+
+  .trig-btn.pressing::after { opacity: 0.2; }
+  .trig-btn.pressing { transform: scale(0.94); }
+  .trig-btn:hover { box-shadow: 0 0 0 1px var(--btn-color, var(--accent)); }
+
+  @keyframes flash-ok  { 0% { box-shadow: 0 0 0 2px var(--success), 0 0 18px var(--success); } 100% { box-shadow: none; } }
+  @keyframes flash-err { 0% { box-shadow: 0 0 0 2px var(--danger),  0 0 18px var(--danger);  } 100% { box-shadow: none; } }
+
+  .trig-btn.success-flash { animation: flash-ok  0.4s ease-out; }
+  .trig-btn.error-flash   { animation: flash-err 0.4s ease-out; }
+
+  .trig-label {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: #fff;
+    text-align: center;
+    padding: 0 10px;
+    line-height: 1.1;
+    pointer-events: none;
+  }
+
+  .trig-meta {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    pointer-events: none;
+  }
+
+  /* ── EMPTY / LOADING STATES ── */
+  .center-state {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    text-transform: uppercase;
+    pointer-events: none;
+  }
+
+  .center-state .icon { font-size: 28px; opacity: 0.25; }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    background: var(--s2);
+    border: 1px solid var(--border);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    padding: 9px 14px;
+    z-index: 9999;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.18s, transform 0.18s;
+    pointer-events: none;
+  }
+  #toast.show { opacity: 1; transform: translateY(0); }
+  #toast.ok  { border-color: var(--success); color: var(--success); }
+  #toast.err { border-color: var(--danger);  color: var(--danger);  }
+  #toast.inf { border-color: var(--accent);  color: var(--accent);  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">COMPANION</div>
+  <div class="divider"></div>
+  <div class="view-tabs" id="view-tabs"></div>
+  <div class="status-dot loading" id="status-dot"></div>
+</div>
+
+<div class="grid-area" id="grid-area">
+  <div class="center-state" id="center-state">
+    <div class="icon">◻</div>
+    <div id="center-msg">CONNECTING…</div>
+  </div>
+  <div class="button-grid" id="button-grid"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ─── All API calls use relative paths — no server URL needed in the client ───
+let appState   = null;
+let activeView = sessionStorage.getItem('cb_view') || null;
+
+// ─── BOOT ─────────────────────────────────────────────────────────────────────
+init();
+
+async function init() {
+  setDot('loading');
+  try {
+    const r = await fetch('/state');
+    if (!r.ok) throw new Error(r.status);
+    appState = await r.json();
+    setDot('ok');
+    renderTabs();
+    renderGrid();
+  } catch(e) {
+    setDot('err');
+    setCenterMsg('CANNOT REACH SERVER');
+    toast('Server unreachable', 'err');
+    // Try local cache so the page is still usable
+    const cached = sessionStorage.getItem('cb_state_cache');
+    if (cached) {
+      appState = JSON.parse(cached);
+      renderTabs();
+      renderGrid();
+      toast('Showing cached layout', 'inf');
+    }
+  }
+  if (appState) sessionStorage.setItem('cb_state_cache', JSON.stringify(appState));
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function renderTabs() {
+  const tabs = document.getElementById('view-tabs');
+  tabs.innerHTML = '';
+  if (!appState?.views) return;
+
+  const entries = Object.entries(appState.views);
+  if (!activeView || !appState.views[activeView]) {
+    activeView = entries[0]?.[0] || null;
+  }
+
+  entries.forEach(([id, view]) => {
+    const tab = document.createElement('button');
+    tab.className = 'view-tab' + (id === activeView ? ' active' : '');
+    tab.textContent = view.name;
+    tab.addEventListener('click', () => {
+      activeView = id;
+      sessionStorage.setItem('cb_view', id);
+      renderTabs();
+      renderGrid();
+    });
+    tabs.appendChild(tab);
+  });
+}
+
+function renderGrid() {
+  const grid = document.getElementById('button-grid');
+  grid.innerHTML = '';
+
+  if (!appState || !activeView || !appState.views[activeView]) {
+    setCenterMsg('NO VIEW SELECTED');
+    return;
+  }
+
+  const ids  = appState.views[activeView].buttonIds || [];
+  const btns = ids.map(id => appState.buttons.find(b => b.id === id)).filter(Boolean);
+
+  if (btns.length === 0) {
+    setCenterMsg('NO BUTTONS IN THIS VIEW');
+    return;
+  }
+
+  setCenterMsg(null); // hide
+
+  btns.forEach(btn => {
+    const el = document.createElement('div');
+    el.className = 'trig-btn';
+    el.style.setProperty('--btn-color', btn.color);
+    el.innerHTML = `
+      <div class="trig-label">${esc(btn.label)}</div>
+      <div class="trig-meta">P${btn.page} · B${btn.bank}</div>
+    `;
+
+    const pressStart = () => el.classList.add('pressing');
+    const pressEnd   = () => el.classList.remove('pressing');
+    el.addEventListener('mousedown',  pressStart);
+    el.addEventListener('mouseup',    pressEnd);
+    el.addEventListener('mouseleave', pressEnd);
+    el.addEventListener('touchstart', pressStart, { passive: true });
+    el.addEventListener('touchend',   pressEnd);
+    el.addEventListener('click', () => trigger(btn, el));
+
+    grid.appendChild(el);
+  });
+}
+
+// ─── TRIGGER ─────────────────────────────────────────────────────────────────
+async function trigger(btn, el) {
+  try {
+    const r = await fetch('/trigger', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ page: btn.page, bank: btn.bank }),
+    });
+    const data = await r.json();
+    if (data.ok) {
+      flash(el, 'success-flash');
+    } else {
+      flash(el, 'error-flash');
+      toast('Error: ' + (data.error || 'unknown'), 'err');
+    }
+  } catch(e) {
+    flash(el, 'error-flash');
+    toast('Trigger failed', 'err');
+  }
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function flash(el, cls) {
+  el.classList.add(cls);
+  setTimeout(() => el.classList.remove(cls), 450);
+}
+
+function setDot(cls) {
+  document.getElementById('status-dot').className = 'status-dot ' + cls;
+}
+
+function setCenterMsg(msg) {
+  const el = document.getElementById('center-state');
+  if (!msg) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  document.getElementById('center-msg').textContent = msg;
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+let toastTimer;
+function toast(msg, type = 'inf') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = ''; }, 2500);
+}
+</script>
+</body>
+</html>
