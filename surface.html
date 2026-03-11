@@ -413,55 +413,26 @@ async function connectDeck() {
     return;
   }
   try {
-    // Request with no filters first so ALL HID devices show in picker,
-    // then filter to Elgato after selection
     const devices = await navigator.hid.requestDevice({
       filters: [{ vendorId: ELGATO_VENDOR }]
     });
-    if (!devices.length) {
-      toast('No StreamDeck selected', 'inf');
-      return;
-    }
+    if (!devices.length) return;
 
     const dev = devices[0];
-    console.log('[deck] product id:', dev.productId.toString(16), 'name:', dev.productName);
-
-    // Match model — try exact product ID first, then name-based fallback
-    deckModel = DECK_MODELS[dev.productId];
-    if (!deckModel) {
-      // Guess from product name
-      const n = (dev.productName || '').toLowerCase();
-      if      (n.includes('xl'))   deckModel = DECK_MODELS[0x006c];
-      else if (n.includes('mini')) deckModel = DECK_MODELS[0x0090];
-      else if (n.includes('plus')) deckModel = DECK_MODELS[0x0084];
-      else                         deckModel = DECK_MODELS[0x0080]; // MK2 default
-    }
-    deckModel = { ...deckModel }; // clone so we can mutate
+    deckModel = DECK_MODELS[dev.productId] || DECK_MODELS[0x006d]; // fallback to Original2
     deckModel.totalKeys = deckModel.cols * deckModel.rows;
 
-    if (dev.opened) {
-      // Already open from auto-reconnect
-    } else {
-      await dev.open();
-    }
-
+    await dev.open();
     deckDevice = dev;
+
     dev.addEventListener('inputreport', onDeckInput);
 
     setDeckUI(true, deckModel.name);
     toast(`StreamDeck ${deckModel.name} connected`, 'ok');
-
-    // Small delay then sync — device needs a moment after open()
-    setTimeout(deckSync, 300);
-
+    deckSync();
   } catch(e) {
-    console.error('[deck] connect error:', e);
-    if (e.name === 'NotAllowedError') {
-      toast('Permission denied — select the StreamDeck in the popup', 'inf');
-    } else if (e.name === 'SecurityError') {
-      toast('WebHID requires HTTPS — open via Railway URL', 'err');
-    } else {
-      toast('StreamDeck error: ' + e.message, 'err');
+    if (e.name !== 'NotAllowedError') {
+      toast('StreamDeck connect failed: ' + e.message, 'err');
     }
   }
 }
@@ -557,16 +528,17 @@ async function drawDeckKey(keyIndex, btn) {
     ctx.fillRect(0, 0, size, size);
   }
 
-  // Rotate 180° — StreamDeck hardware displays images upside down
-  const rotated = document.createElement('canvas');
-  rotated.width = rotated.height = size;
-  const rctx = rotated.getContext('2d');
-  rctx.translate(size, size);
-  rctx.rotate(Math.PI);
-  rctx.drawImage(canvas, 0, 0);
-
-  // Convert canvas to the right image format and send
-  await sendKeyImage(keyIndex, rotated);
+  // Rotate 180° — required for StreamDeck MK2, XL, Plus, Original2
+  // (Original BMP models handle flip inside canvasToBMP already)
+  const finalCanvas = document.createElement('canvas');
+  finalCanvas.width = finalCanvas.height = size;
+  const fctx = finalCanvas.getContext('2d');
+  if (deckModel.imgFmt === 'jpeg') {
+    fctx.translate(size, size);
+    fctx.rotate(Math.PI);
+  }
+  fctx.drawImage(canvas, 0, 0);
+  await sendKeyImage(keyIndex, finalCanvas);
 }
 
 async function deckFlash(keyIndex) {
@@ -586,7 +558,13 @@ async function deckFlash(keyIndex) {
   ctx.textBaseline = 'middle';
   ctx.font = `700 ${Math.round(size*0.18)}px "Barlow Condensed", sans-serif`;
   ctx.fillText(btn.label.toUpperCase(), size/2, size/2, size-8);
-  await sendKeyImage(keyIndex, canvas);
+  // Rotate 180° for JPEG models
+  const fc = document.createElement('canvas');
+  fc.width = fc.height = size;
+  const fctx2 = fc.getContext('2d');
+  if (deckModel.imgFmt === 'jpeg') { fctx2.translate(size, size); fctx2.rotate(Math.PI); }
+  fctx2.drawImage(canvas, 0, 0);
+  await sendKeyImage(keyIndex, fc);
 
   // Restore after 300ms
   setTimeout(() => drawDeckKey(keyIndex, btn), 300);
@@ -641,37 +619,28 @@ async function sendKeyImage(keyIndex, canvas) {
 
 // ── Handle key press/release from StreamDeck ─────────────────────
 function onDeckInput(event) {
+  // WebHID strips the report ID — it's in event.reportId, not in event.data
+  // Only handle key state reports
+  if (event.reportId !== 0x01) return;
+
   const data = new Uint8Array(event.data.buffer);
 
-  // Different firmware versions use different report formats.
-  // We accept report ID 0x01 (most models) but also raw reports where
-  // the first byte IS the key data (some firmware versions send without ID).
-  // Key offset: Original/MK2 = index 3, Mini/XL/Plus/newer = index 4
-  // We try both offsets and pick whichever has sensible data.
-
+  // StreamDeck v2 key data layout (report ID already stripped by WebHID):
+  // byte 0: message type (0x01)
+  // bytes 1-3: padding
+  // bytes 4+: key states, one byte per key (1=pressed, 0=released)
+  const keyOffset = 4;
   const total = deckModel.totalKeys;
-
-  // Determine key data offset — try 4 first (newer models), fall back to 3
-  // A valid key report will have only 0x00 or 0x01 values in key area
-  let offset = deckModel.keyOffset || 4;
-
-  // Validate: if all values at offset are 0/1 within total keys, it's good
-  // Otherwise try offset 3
-  let valid = true;
   for (let i = 0; i < total; i++) {
-    const v = data[i + offset];
-    if (v !== 0 && v !== 1) { valid = false; break; }
-  }
-  if (!valid) offset = 3;
-
-  for (let i = 0; i < total; i++) {
-    const pressed = data[i + offset] === 1;
+    const pressed = data[i + keyOffset] === 1;
     const wasDown = deckKeyDown[i] || false;
 
     if (pressed && !wasDown) {
+      // Key down — fire trigger
       deckKeyDown[i] = true;
       const btn = deckButtons[i];
       if (btn) {
+        // Find the matching screen element if visible
         const screenEl = findScreenEl(btn);
         fireTrigger(btn, screenEl);
       }
@@ -785,14 +754,13 @@ if (navigator.hid) {
     if (deck) {
       deckModel = DECK_MODELS[deck.productId] || DECK_MODELS[0x006d];
       deckModel.totalKeys = deckModel.cols * deckModel.rows;
-      const openPromise = deck.opened ? Promise.resolve() : deck.open();
-      openPromise.then(() => {
+      deck.open().then(() => {
         deckDevice = deck;
         deck.addEventListener('inputreport', onDeckInput);
         setDeckUI(true, deckModel.name);
         toast(`StreamDeck ${deckModel.name} auto-reconnected`, 'ok');
-        setTimeout(deckSync, 300);
-      }).catch((e) => { console.warn('[deck] auto-reconnect failed:', e); });
+        deckSync();
+      }).catch(() => {});
     }
   });
 }
