@@ -517,7 +517,7 @@ function renderGrid() {
     el.style.setProperty('--btn-color', btn.color);
     el.innerHTML = `
       <div class="trig-label">${esc(btn.label)}</div>
-      <div class="trig-meta">P${btn.page} · B${btn.bank}</div>
+      <div class="trig-meta">P${btn.page} R${btn.row ?? 0} C${btn.col ?? 0}</div>
     `;
 
     const pressStart = () => el.classList.add('pressing');
@@ -539,7 +539,7 @@ async function trigger(btn, el) {
     const r = await fetch(SERVER + '/trigger', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ page: btn.page, bank: btn.bank }),
+      body: JSON.stringify({ page: btn.page, row: btn.row ?? 0, col: btn.col ?? 0 }),
     });
     const data = await r.json();
     if (data.ok) {

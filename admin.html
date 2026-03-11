@@ -226,6 +226,7 @@
   input.field:focus { border-color: var(--accent); }
 
   .field-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .field-row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
 
   .swatches { display: flex; flex-wrap: wrap; gap: 5px; }
   .swatch {
@@ -392,14 +393,18 @@
             <div class="field-lbl">Label</div>
             <input class="field" type="text" id="edit-label" maxlength="14" placeholder="BUTTON LABEL">
           </div>
-          <div class="field-row2">
+          <div class="field-row3">
             <div class="field-group">
-              <div class="field-lbl">Companion Page</div>
-              <input class="field" type="number" id="edit-page" min="1" max="99">
+              <div class="field-lbl">Page</div>
+              <input class="field" type="number" id="edit-page" min="1" max="99" placeholder="1">
             </div>
             <div class="field-group">
-              <div class="field-lbl">Companion Bank</div>
-              <input class="field" type="number" id="edit-bank" min="1" max="32">
+              <div class="field-lbl">Row</div>
+              <input class="field" type="number" id="edit-row" min="0" max="7" placeholder="0">
+            </div>
+            <div class="field-group">
+              <div class="field-lbl">Column</div>
+              <input class="field" type="number" id="edit-col" min="0" max="7" placeholder="0">
             </div>
           </div>
         </div>
@@ -634,7 +639,7 @@ function renderBtnGrid() {
 
     const meta = document.createElement('div');
     meta.className = 'btn-card-meta';
-    meta.textContent = `PAGE ${btn.page}  ·  BANK ${btn.bank}`;
+    meta.textContent = `P${btn.page} R${btn.row ?? 0} C${btn.col ?? 0}`;
 
     // view chips
     const chips = document.createElement('div');
@@ -677,7 +682,8 @@ function openEditPanel(btn) {
   editDraft = { ...btn };
   document.getElementById('edit-label').value = btn.label;
   document.getElementById('edit-page').value  = btn.page;
-  document.getElementById('edit-bank').value  = btn.bank;
+  document.getElementById('edit-row').value   = btn.row ?? 0;
+  document.getElementById('edit-col').value   = btn.col ?? 0;
 
   // Set active swatch
   document.querySelectorAll('#edit-swatches .swatch').forEach(s => {
@@ -696,8 +702,12 @@ function openEditPanel(btn) {
     editDraft.page = parseInt(document.getElementById('edit-page').value) || 1;
     updatePreview();
   };
-  document.getElementById('edit-bank').oninput = () => {
-    editDraft.bank = parseInt(document.getElementById('edit-bank').value) || 1;
+  document.getElementById('edit-row').oninput = () => {
+    editDraft.row = parseInt(document.getElementById('edit-row').value) ?? 0;
+    updatePreview();
+  };
+  document.getElementById('edit-col').oninput = () => {
+    editDraft.col = parseInt(document.getElementById('edit-col').value) ?? 0;
     updatePreview();
   };
 }
@@ -707,7 +717,7 @@ function updatePreview() {
   const p = document.getElementById('edit-preview');
   p.style.setProperty('--preview-color', editDraft.color);
   document.getElementById('preview-label').textContent = editDraft.label || '—';
-  document.getElementById('preview-meta').textContent  = `P${editDraft.page} B${editDraft.bank}`;
+  document.getElementById('preview-meta').textContent  = `P${editDraft.page} R${editDraft.row} C${editDraft.col}`;
 }
 
 function closeEditPanel() {
@@ -810,7 +820,8 @@ function newButton() {
     id: uid(),
     label: 'NEW',
     page: 1,
-    bank: state.buttons.length + 1,
+    row: 0,
+    col: 0,
     color: SWATCHES[Math.floor(Math.random() * 8)],
   };
   state.buttons.push(btn);

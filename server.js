@@ -24,12 +24,12 @@ const triggerQueue = [];
 // ── In-memory state ───────────────────────────────────────────────────────────
 let appState = {
   buttons: [
-    { id: 'b1', label: 'CAM 1',  page: 1, bank: 1, color: '#e63946' },
-    { id: 'b2', label: 'CAM 2',  page: 1, bank: 2, color: '#457b9d' },
-    { id: 'b3', label: 'WIDE',   page: 1, bank: 3, color: '#52b788' },
-    { id: 'b4', label: 'TITLES', page: 1, bank: 4, color: '#e9c46a' },
-    { id: 'b5', label: 'BREAK',  page: 1, bank: 5, color: '#f4a261' },
-    { id: 'b6', label: 'STREAM', page: 2, bank: 1, color: '#a855f7' },
+    { id: 'b1', label: 'CAM 1',  page: 1, row: 0, col: 0, color: '#e63946' },
+    { id: 'b2', label: 'CAM 2',  page: 1, row: 0, col: 1, color: '#457b9d' },
+    { id: 'b3', label: 'WIDE',   page: 1, row: 0, col: 2, color: '#52b788' },
+    { id: 'b4', label: 'TITLES', page: 1, row: 1, col: 0, color: '#e9c46a' },
+    { id: 'b5', label: 'BREAK',  page: 1, row: 1, col: 1, color: '#f4a261' },
+    { id: 'b6', label: 'STREAM', page: 2, row: 0, col: 0, color: '#a855f7' },
   ],
   views: {
     'v1': { name: 'CAMERAS',  buttonIds: ['b1', 'b2', 'b3'] },
@@ -64,10 +64,12 @@ app.put('/state', checkSecret, (req, res) => {
 });
 
 app.post('/trigger', (req, res) => {
-  const { page, bank } = req.body;
-  if (!page || !bank) return res.status(400).json({ error: 'page and bank required' });
-  triggerQueue.push({ page, bank, ts: Date.now() });
-  console.log(`[queue] P${page}B${bank}  (depth: ${triggerQueue.length})`);
+  const { page, row, col } = req.body;
+  if (page === undefined || row === undefined || col === undefined) {
+    return res.status(400).json({ error: 'page, row and col required' });
+  }
+  triggerQueue.push({ page, row, col, ts: Date.now() });
+  console.log(`[queue] P${page}/R${row}/C${col}  (depth: ${triggerQueue.length})`);
   res.json({ ok: true, queued: triggerQueue.length });
 });
 
@@ -78,8 +80,8 @@ app.get('/poll', checkSecret, (req, res) => {
   }
   if (triggerQueue.length === 0) return res.status(204).end();
   const item = triggerQueue.shift();
-  console.log(`[poll] dispatching P${item.page}B${item.bank}`);
-  res.json({ page: item.page, bank: item.bank });
+  console.log(`[poll] dispatching P${item.page}/R${item.row}/C${item.col}`);
+  res.json({ page: item.page, row: item.row, col: item.col });
 });
 
 // ── STATIC + HTML (after API routes) ─────────────────────────────────────────
