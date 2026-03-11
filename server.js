@@ -10,7 +10,19 @@ const API_SECRET = process.env.API_SECRET || null;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname)));
+
+// ── Serve HTML with no-cache so browsers always get the latest version ────────
+app.get('/', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(__dirname, 'surface.html'));
+});
+app.get('/admin.html', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
+// Static for everything else
+app.use(express.static(path.join(__dirname), { maxAge: 0 }));
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 function checkSecret(req, res, next) {
@@ -21,8 +33,6 @@ function checkSecret(req, res, next) {
 }
 
 // ── Trigger queue ─────────────────────────────────────────────────────────────
-// surface.html calls POST /trigger → pushes { page, bank } onto the queue
-// Python app calls GET /poll       → pops and returns the next item (or 204)
 const triggerQueue = [];
 
 // ── In-memory state ───────────────────────────────────────────────────────────
@@ -44,20 +54,14 @@ let appState = {
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 
-// Index — surface control page (public, no login)
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'surface.html')));
-
-// Health check
 app.get('/health', (req, res) => res.json({
   status: 'ok',
   queued: triggerQueue.length,
   mode: 'osc-relay',
 }));
 
-// State — read by surface.html and admin.html
 app.get('/state', (req, res) => res.json(appState));
 
-// State — written by admin.html (requires secret)
 app.put('/state', checkSecret, (req, res) => {
   const { buttons, views } = req.body;
   if (!Array.isArray(buttons) || typeof views !== 'object') {
@@ -68,31 +72,20 @@ app.put('/state', checkSecret, (req, res) => {
   res.json({ ok: true });
 });
 
-// Trigger — surface.html posts here; enqueues for Python app to pick up
-// No auth: surface is public facing and has no login
 app.post('/trigger', (req, res) => {
   const { page, bank } = req.body;
   if (!page || !bank) return res.status(400).json({ error: 'page and bank required' });
-
   triggerQueue.push({ page, bank, ts: Date.now() });
-  console.log(`[queue] P${page}B${bank}  (queue depth: ${triggerQueue.length})`);
+  console.log(`[queue] P${page}B${bank}  (depth: ${triggerQueue.length})`);
   res.json({ ok: true, queued: triggerQueue.length });
 });
 
-// Poll — Python bridge app calls this on a loop to dequeue triggers
-// Requires secret (only the local Python app should call this)
 app.get('/poll', checkSecret, (req, res) => {
-  // Drop stale items older than 10 seconds (e.g. if Python was offline)
   const now = Date.now();
   while (triggerQueue.length && now - triggerQueue[0].ts > 10000) {
-    console.log(`[queue] dropping stale trigger`);
     triggerQueue.shift();
   }
-
-  if (triggerQueue.length === 0) {
-    return res.status(204).end(); // nothing waiting
-  }
-
+  if (triggerQueue.length === 0) return res.status(204).end();
   const item = triggerQueue.shift();
   console.log(`[poll]  dispatching P${item.page}B${item.bank}`);
   res.json({ page: item.page, bank: item.bank });
@@ -100,7 +93,7 @@ app.get('/poll', checkSecret, (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Companion Bridge  :${PORT}`);
-  console.log(`  /           → surface (public)`);
-  console.log(`  /admin.html → admin (use secret)`);
-  console.log(`  /poll       → Python OSC relay (use secret)`);
+  console.log(`  /           → surface (public, no-cache)`);
+  console.log(`  /admin.html → admin (no-cache)`);
+  console.log(`  /poll       → Python OSC relay`);
 });
