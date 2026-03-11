@@ -1,7 +1,6 @@
 const express = require('express');
 const cors    = require('cors');
 const path    = require('path');
-const fetch   = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -10,19 +9,6 @@ const API_SECRET = process.env.API_SECRET || null;
 
 app.use(cors());
 app.use(express.json());
-
-// ── Serve HTML with no-cache so browsers always get the latest version ────────
-app.get('/', (req, res) => {
-  res.set('Cache-Control', 'no-store');
-  res.sendFile(path.join(__dirname, 'surface.html'));
-});
-app.get('/admin.html', (req, res) => {
-  res.set('Cache-Control', 'no-store');
-  res.sendFile(path.join(__dirname, 'admin.html'));
-});
-
-// Static for everything else
-app.use(express.static(path.join(__dirname), { maxAge: 0 }));
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 function checkSecret(req, res, next) {
@@ -52,7 +38,9 @@ let appState = {
   },
 };
 
-// ── Routes ────────────────────────────────────────────────────────────────────
+// ── API ROUTES (must come before static middleware) ───────────────────────────
+
+app.get('/favicon.ico', (req, res) => res.status(204).end());
 
 app.get('/health', (req, res) => res.json({
   status: 'ok',
@@ -60,7 +48,10 @@ app.get('/health', (req, res) => res.json({
   mode: 'osc-relay',
 }));
 
-app.get('/state', (req, res) => res.json(appState));
+app.get('/state', (req, res) => {
+  console.log('[state] GET');
+  res.json(appState);
+});
 
 app.put('/state', checkSecret, (req, res) => {
   const { buttons, views } = req.body;
@@ -68,7 +59,7 @@ app.put('/state', checkSecret, (req, res) => {
     return res.status(400).json({ error: 'Expected { buttons: [], views: {} }' });
   }
   appState = { buttons, views };
-  console.log(`[state] ${buttons.length} buttons, ${Object.keys(views).length} views`);
+  console.log(`[state] PUT — ${buttons.length} buttons, ${Object.keys(views).length} views`);
   res.json({ ok: true });
 });
 
@@ -87,13 +78,27 @@ app.get('/poll', checkSecret, (req, res) => {
   }
   if (triggerQueue.length === 0) return res.status(204).end();
   const item = triggerQueue.shift();
-  console.log(`[poll]  dispatching P${item.page}B${item.bank}`);
+  console.log(`[poll] dispatching P${item.page}B${item.bank}`);
   res.json({ page: item.page, bank: item.bank });
 });
 
+// ── STATIC + HTML (after API routes) ─────────────────────────────────────────
+app.get('/', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(__dirname, 'surface.html'));
+});
+
+app.get('/admin.html', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
+// ── START ─────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
-  console.log(`Companion Bridge  :${PORT}`);
-  console.log(`  /           → surface (public, no-cache)`);
-  console.log(`  /admin.html → admin (no-cache)`);
-  console.log(`  /poll       → Python OSC relay`);
+  console.log(`Companion Bridge running on port ${PORT}`);
+  console.log(`  GET  /        → surface.html`);
+  console.log(`  GET  /state   → button layout`);
+  console.log(`  PUT  /state   → save layout (secret required)`);
+  console.log(`  POST /trigger → queue a button press`);
+  console.log(`  GET  /poll    → dequeue for OSC relay (secret required)`);
 });
