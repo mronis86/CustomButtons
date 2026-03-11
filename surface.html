@@ -30,7 +30,6 @@
     flex-direction: column;
   }
 
-  /* scanlines */
   body::after {
     content: '';
     position: fixed;
@@ -38,6 +37,98 @@
     background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px);
     pointer-events: none;
     z-index: 9000;
+  }
+
+  /* ── FIRST-RUN OVERLAY ── */
+  #setup {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 800;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  #setup.hidden { display: none; }
+
+  .setup-box {
+    background: var(--s1);
+    border: 1px solid var(--border);
+    width: 380px;
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .setup-title {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+  }
+
+  .setup-desc {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    line-height: 1.7;
+    letter-spacing: 0.04em;
+  }
+
+  .setup-field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .setup-field label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .setup-field input {
+    background: var(--s2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    padding: 10px 12px;
+    outline: none;
+    width: 100%;
+    transition: border-color 0.15s;
+  }
+
+  .setup-field input:focus { border-color: var(--accent); }
+
+  .setup-btn {
+    padding: 12px;
+    background: var(--accent);
+    border: none;
+    color: #000;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 15px;
+    font-weight: 900;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.12s;
+  }
+  .setup-btn:hover { background: #33ddff; }
+
+  .setup-note {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    text-align: center;
+    letter-spacing: 0.05em;
   }
 
   /* ── TOPBAR ── */
@@ -61,11 +152,7 @@
     flex-shrink: 0;
   }
 
-  .divider {
-    width: 1px; height: 22px;
-    background: var(--border);
-    flex-shrink: 0;
-  }
+  .divider { width: 1px; height: 22px; background: var(--border); flex-shrink: 0; }
 
   .view-tabs {
     display: flex;
@@ -92,24 +179,40 @@
     white-space: nowrap;
     flex-shrink: 0;
   }
-  .view-tab:hover { color: var(--text); border-color: var(--border); }
+  .view-tab:hover { color: var(--text); }
   .view-tab.active { background: var(--accent); border-color: var(--accent); color: #000; }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
 
   .status-dot {
     width: 6px; height: 6px;
     border-radius: 50%;
     background: var(--muted);
     transition: all 0.3s;
-    flex-shrink: 0;
-    margin-left: auto;
   }
-  .status-dot.ok  { background: var(--success); box-shadow: 0 0 5px var(--success); }
-  .status-dot.err { background: var(--danger); box-shadow: 0 0 5px var(--danger); }
-  .status-dot.loading {
-    background: var(--accent);
-    animation: pulse 1s infinite;
-  }
+  .status-dot.ok      { background: var(--success); box-shadow: 0 0 5px var(--success); }
+  .status-dot.err     { background: var(--danger);  box-shadow: 0 0 5px var(--danger); }
+  .status-dot.loading { background: var(--accent); animation: pulse 1s infinite; }
   @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.2; } }
+
+  /* small gear to re-open setup */
+  .gear-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 2px 4px;
+    line-height: 1;
+    transition: color 0.1s;
+  }
+  .gear-btn:hover { color: var(--accent); }
 
   /* ── GRID AREA ── */
   .grid-area {
@@ -183,7 +286,6 @@
 
   @keyframes flash-ok  { 0% { box-shadow: 0 0 0 2px var(--success), 0 0 18px var(--success); } 100% { box-shadow: none; } }
   @keyframes flash-err { 0% { box-shadow: 0 0 0 2px var(--danger),  0 0 18px var(--danger);  } 100% { box-shadow: none; } }
-
   .trig-btn.success-flash { animation: flash-ok  0.4s ease-out; }
   .trig-btn.error-flash   { animation: flash-err 0.4s ease-out; }
 
@@ -206,7 +308,7 @@
     pointer-events: none;
   }
 
-  /* ── EMPTY / LOADING STATES ── */
+  /* ── CENTER STATE ── */
   .center-state {
     position: absolute;
     inset: 0;
@@ -222,7 +324,6 @@
     text-transform: uppercase;
     pointer-events: none;
   }
-
   .center-state .icon { font-size: 28px; opacity: 0.25; }
 
   /* ── TOAST ── */
@@ -250,13 +351,34 @@
 </head>
 <body>
 
+<!-- FIRST-RUN SETUP — hidden after URL is saved -->
+<div id="setup">
+  <div class="setup-box">
+    <div class="setup-title">// COMPANION REMOTE — CONNECT</div>
+    <div class="setup-desc">Enter the Railway server URL below.<br>This is saved to your browser and won't be asked again.</div>
+
+    <div class="setup-field">
+      <label>Railway Server URL</label>
+      <input type="url" id="setup-url" placeholder="https://your-app.up.railway.app" autocomplete="off" spellcheck="false">
+    </div>
+
+    <button class="setup-btn" id="setup-go">CONNECT</button>
+    <div class="setup-note">Tap ⚙ in the top bar any time to change this.</div>
+  </div>
+</div>
+
+<!-- TOPBAR -->
 <div class="topbar">
   <div class="logo">COMPANION</div>
   <div class="divider"></div>
   <div class="view-tabs" id="view-tabs"></div>
-  <div class="status-dot loading" id="status-dot"></div>
+  <div class="topbar-right">
+    <div class="status-dot loading" id="status-dot"></div>
+    <button class="gear-btn" id="gear-btn" title="Change server">⚙</button>
+  </div>
 </div>
 
+<!-- GRID -->
 <div class="grid-area" id="grid-area">
   <div class="center-state" id="center-state">
     <div class="icon">◻</div>
@@ -268,28 +390,69 @@
 <div id="toast"></div>
 
 <script>
-// ─── All API calls use relative paths — no server URL needed in the client ───
+// ─── SERVER URL ───────────────────────────────────────────────────────────────
+// Stored in localStorage so users only enter it once.
+// If the page IS served by Railway, we can use relative paths —
+// but if opened as a local file or from another host, we need the full URL.
+
+let SERVER = localStorage.getItem('cb_server_url') || '';
+
+// ─── SETUP OVERLAY ────────────────────────────────────────────────────────────
+const setupEl = document.getElementById('setup');
+const setupInput = document.getElementById('setup-url');
+
+function showSetup() {
+  setupInput.value = SERVER;
+  setupEl.classList.remove('hidden');
+}
+
+function hideSetup() {
+  setupEl.classList.add('hidden');
+}
+
+document.getElementById('setup-go').addEventListener('click', doSetup);
+setupInput.addEventListener('keydown', e => { if (e.key === 'Enter') doSetup(); });
+document.getElementById('gear-btn').addEventListener('click', showSetup);
+
+function doSetup() {
+  const val = setupInput.value.trim().replace(/\/$/, '');
+  if (!val) return;
+  SERVER = val;
+  localStorage.setItem('cb_server_url', SERVER);
+  hideSetup();
+  init();
+}
+
+// On load: if we already have a URL, skip setup and go straight to init
+if (SERVER) {
+  hideSetup();
+  init();
+}
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
 let appState   = null;
-let activeView = sessionStorage.getItem('cb_view') || null;
+let activeView = localStorage.getItem('cb_view') || null;
 
-// ─── BOOT ─────────────────────────────────────────────────────────────────────
-init();
-
+// ─── INIT ─────────────────────────────────────────────────────────────────────
 async function init() {
   setDot('loading');
+  setCenterMsg('CONNECTING…');
+
   try {
-    const r = await fetch('/state');
-    if (!r.ok) throw new Error(r.status);
+    const r = await fetch(SERVER + '/state');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
     appState = await r.json();
+    localStorage.setItem('cb_state_cache', JSON.stringify(appState));
     setDot('ok');
     renderTabs();
     renderGrid();
   } catch(e) {
     setDot('err');
     setCenterMsg('CANNOT REACH SERVER');
-    toast('Server unreachable', 'err');
-    // Try local cache so the page is still usable
-    const cached = sessionStorage.getItem('cb_state_cache');
+    toast('Cannot connect — tap ⚙ to check server URL', 'err');
+
+    // Fall back to cache so page is usable offline
+    const cached = localStorage.getItem('cb_state_cache');
     if (cached) {
       appState = JSON.parse(cached);
       renderTabs();
@@ -297,7 +460,6 @@ async function init() {
       toast('Showing cached layout', 'inf');
     }
   }
-  if (appState) sessionStorage.setItem('cb_state_cache', JSON.stringify(appState));
 }
 
 // ─── RENDER ───────────────────────────────────────────────────────────────────
@@ -317,7 +479,7 @@ function renderTabs() {
     tab.textContent = view.name;
     tab.addEventListener('click', () => {
       activeView = id;
-      sessionStorage.setItem('cb_view', id);
+      localStorage.setItem('cb_view', id);
       renderTabs();
       renderGrid();
     });
@@ -342,7 +504,7 @@ function renderGrid() {
     return;
   }
 
-  setCenterMsg(null); // hide
+  setCenterMsg(null);
 
   btns.forEach(btn => {
     const el = document.createElement('div');
@@ -369,7 +531,7 @@ function renderGrid() {
 // ─── TRIGGER ─────────────────────────────────────────────────────────────────
 async function trigger(btn, el) {
   try {
-    const r = await fetch('/trigger', {
+    const r = await fetch(SERVER + '/trigger', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ page: btn.page, bank: btn.bank }),
@@ -383,7 +545,7 @@ async function trigger(btn, el) {
     }
   } catch(e) {
     flash(el, 'error-flash');
-    toast('Trigger failed', 'err');
+    toast('Trigger failed — check connection', 'err');
   }
 }
 
@@ -414,7 +576,7 @@ function toast(msg, type = 'inf') {
   el.textContent = msg;
   el.className = 'show ' + type;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.className = ''; }, 2500);
+  toastTimer = setTimeout(() => { el.className = ''; }, 3000);
 }
 </script>
 </body>
