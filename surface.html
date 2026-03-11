@@ -391,11 +391,16 @@
 
 <script>
 // ─── SERVER URL ───────────────────────────────────────────────────────────────
-// Stored in localStorage so users only enter it once.
-// If the page IS served by Railway, we can use relative paths —
-// but if opened as a local file or from another host, we need the full URL.
+// When served by Railway, derive the URL automatically from window.location.
+// Only show the setup prompt if opened from a local file or unknown origin.
 
-let SERVER = localStorage.getItem('cb_server_url') || '';
+const isRemote = window.location.protocol.startsWith('http') &&
+                 window.location.hostname !== 'localhost' &&
+                 window.location.hostname !== '127.0.0.1';
+
+let SERVER = isRemote
+  ? window.location.origin
+  : (localStorage.getItem('cb_server_url') || '');
 
 // ─── SETUP OVERLAY ────────────────────────────────────────────────────────────
 const setupEl = document.getElementById('setup');
@@ -423,7 +428,7 @@ function doSetup() {
   init();
 }
 
-// On load: if we already have a URL, skip setup and go straight to init
+// Auto-start — skip setup if we have a URL
 if (SERVER) {
   hideSetup();
   init();
