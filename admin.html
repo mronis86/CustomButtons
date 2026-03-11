@@ -8,646 +8,355 @@
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700;900&display=swap');
 
   :root {
-    --bg:       #080a0c;
-    --s1:       #0f1115;
-    --s2:       #161920;
-    --s3:       #1e222b;
-    --border:   #252a35;
-    --border2:  #2f3545;
-    --text:     #bdc4d4;
-    --muted:    #4e5668;
-    --accent:   #00d4ff;
-    --warn:     #ffb700;
-    --danger:   #ff3b3b;
-    --success:  #00e676;
+    --bg:      #080a0c;
+    --s1:      #0f1115;
+    --s2:      #161920;
+    --s3:      #1e222b;
+    --border:  #252a35;
+    --border2: #2f3545;
+    --text:    #bdc4d4;
+    --muted:   #4e5668;
+    --accent:  #00d4ff;
+    --warn:    #ffb700;
+    --danger:  #ff3b3b;
+    --success: #00e676;
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Barlow Condensed', sans-serif; min-height: 100vh; }
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Barlow Condensed', sans-serif;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
-
-  /* scanlines */
   body::after {
     content: '';
-    position: fixed;
-    inset: 0;
-    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px);
-    pointer-events: none;
-    z-index: 9000;
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 4px);
+    pointer-events: none; z-index: 9000;
   }
 
   /* ── TOPBAR ── */
   .topbar {
-    height: 52px;
+    height: 50px;
     background: var(--s1);
     border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    padding: 0 20px;
-    gap: 16px;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    flex-shrink: 0;
+    display: flex; align-items: center;
+    padding: 0 20px; gap: 12px;
+    position: sticky; top: 0; z-index: 200;
   }
 
   .logo {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 12px;
-    letter-spacing: 0.2em;
-    color: var(--accent);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
+    font-size: 12px; letter-spacing: 0.2em; color: var(--accent);
+    display: flex; align-items: center; gap: 8px; flex-shrink: 0;
   }
 
   .logo-badge {
-    background: var(--accent);
-    color: #000;
-    font-size: 9px;
-    padding: 2px 6px;
-    letter-spacing: 0.15em;
-    font-weight: 700;
+    background: var(--accent); color: #000;
+    font-size: 9px; padding: 2px 6px; letter-spacing: 0.15em; font-weight: 700;
   }
 
+  .topbar-sep { width: 1px; height: 24px; background: var(--border); flex-shrink: 0; }
   .topbar-spacer { flex: 1; }
 
-  .server-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 11px;
+  .server-field {
+    display: flex; align-items: center; gap: 8px;
+    font-family: 'Share Tech Mono', monospace; font-size: 11px;
   }
-
-  .server-row label { color: var(--muted); }
+  .server-field label { color: var(--muted); white-space: nowrap; }
 
   input.mono {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 11px;
-    padding: 4px 8px;
-    outline: none;
+    background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); font-family: 'Share Tech Mono', monospace;
+    font-size: 11px; padding: 4px 8px; outline: none; height: 28px;
     transition: border-color 0.15s;
-    height: 28px;
   }
-
   input.mono:focus { border-color: var(--accent); }
 
-  .tb-btn {
-    height: 28px;
-    padding: 0 12px;
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: all 0.12s;
-    white-space: nowrap;
-  }
-
-  .tb-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .tb-btn.primary { background: var(--accent); border-color: var(--accent); color: #000; }
-  .tb-btn.primary:hover { background: #33ddff; }
-
   .status-dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: var(--muted);
-    transition: all 0.3s;
-    flex-shrink: 0;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--muted); transition: all 0.3s; flex-shrink: 0;
   }
   .status-dot.ok  { background: var(--success); box-shadow: 0 0 6px var(--success); }
   .status-dot.err { background: var(--danger);  box-shadow: 0 0 6px var(--danger); }
+  .status-dot.loading { background: var(--accent); animation: blink 1s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
 
-  /* ── BODY LAYOUT ── */
-  .body {
-    display: grid;
-    grid-template-columns: 340px 1fr;
-    flex: 1;
-    overflow: hidden;
-    height: calc(100vh - 52px);
-  }
-
-  /* ── LEFT PANEL — button list ── */
-  .panel-left {
-    background: var(--s1);
-    border-right: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  .panel-header {
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-shrink: 0;
-  }
-
-  .panel-title {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.2em;
-    color: var(--muted);
-    text-transform: uppercase;
-  }
-
-  .btn-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .btn-list::-webkit-scrollbar { width: 4px; }
-  .btn-list::-webkit-scrollbar-track { background: transparent; }
-  .btn-list::-webkit-scrollbar-thumb { background: var(--border2); }
-
-  /* ── BUTTON ROW ── */
-  .btn-row {
-    background: var(--s2);
-    border: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    gap: 0;
-    cursor: pointer;
-    transition: border-color 0.1s;
-    position: relative;
-    user-select: none;
-  }
-
-  .btn-row:hover { border-color: var(--border2); }
-  .btn-row.selected { border-color: var(--accent); }
-
-  .btn-row-color {
-    width: 4px;
-    align-self: stretch;
-    flex-shrink: 0;
-  }
-
-  .btn-row-info {
-    flex: 1;
-    padding: 8px 10px;
-    min-width: 0;
-  }
-
-  .btn-row-label {
-    font-size: 14px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: #fff;
+  .tb-btn {
+    height: 28px; padding: 0 14px;
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text); font-family: 'Barlow Condensed', sans-serif;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase; cursor: pointer; transition: all 0.12s;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  }
+  .tb-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .tb-btn.primary { background: var(--accent); border-color: var(--accent); color: #000; }
+  .tb-btn.primary:hover { background: #33ddff; }
+  .tb-btn.danger  { border-color: var(--danger); color: var(--danger); }
+
+  /* ── PAGE LAYOUT ── */
+  .page { max-width: 1100px; margin: 0 auto; padding: 24px 20px; display: flex; flex-direction: column; gap: 28px; }
+
+  /* ── SECTION ── */
+  .section { display: flex; flex-direction: column; gap: 12px; }
+
+  .section-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
   }
 
-  .btn-row-meta {
+  .section-label {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 10px;
-    color: var(--muted);
-    margin-top: 2px;
+    font-size: 10px; letter-spacing: 0.2em; color: var(--muted); text-transform: uppercase;
   }
 
-  .btn-row-views {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 3px;
-    padding: 0 8px 0 0;
+  .section-actions { display: flex; gap: 8px; align-items: center; }
+
+  /* ── BUTTON GRID (master list) ── */
+  .btn-master-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 8px;
+  }
+
+  .btn-card {
+    background: var(--s1);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: border-color 0.12s;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-card:hover { border-color: var(--border2); }
+  .btn-card.selected { border-color: var(--accent); }
+
+  .btn-card-bar { height: 4px; width: 100%; }
+
+  .btn-card-body { padding: 10px 12px 10px; }
+
+  .btn-card-label {
+    font-size: 16px; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: #fff; line-height: 1.1;
+  }
+
+  .btn-card-meta {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px; color: var(--muted); margin-top: 4px;
+  }
+
+  .btn-card-chips {
+    display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px; min-height: 16px;
   }
 
   .view-chip {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 9px;
-    padding: 2px 5px;
-    letter-spacing: 0.08em;
-    border: 1px solid var(--border2);
-    color: var(--muted);
-    background: var(--s3);
-    white-space: nowrap;
+    font-size: 9px; padding: 1px 5px;
+    border: 1px solid var(--border2); color: var(--muted); background: var(--s3);
   }
 
-  .btn-row-del {
-    width: 32px;
-    align-self: stretch;
+  .btn-card-del {
+    position: absolute; top: 4px; right: 4px;
+    background: none; border: none; color: var(--muted);
+    font-size: 14px; cursor: pointer; line-height: 1; padding: 2px 4px;
+    opacity: 0; transition: opacity 0.1s, color 0.1s;
+  }
+  .btn-card:hover .btn-card-del { opacity: 1; }
+  .btn-card-del:hover { color: var(--danger); }
+
+  .btn-add-card {
     background: transparent;
-    border: none;
-    border-left: 1px solid var(--border);
-    color: var(--muted);
-    font-size: 16px;
-    cursor: pointer;
-    transition: all 0.1s;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    border: 1px dashed var(--border);
+    min-height: 80px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--muted); font-size: 24px;
+    transition: all 0.12s;
   }
+  .btn-add-card:hover { border-color: var(--accent); color: var(--accent); }
 
-  .btn-row-del:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
-
-  /* ── RIGHT PANEL — editor ── */
-  .panel-right {
-    display: grid;
-    grid-template-rows: 1fr 1fr;
-    overflow: hidden;
+  /* ── EDIT PANEL ── */
+  .edit-panel {
+    background: var(--s1);
+    border: 1px solid var(--accent);
+    padding: 16px;
+    display: none;
   }
+  .edit-panel.open { display: block; }
 
-  /* ── BUTTON EDITOR ── */
-  .editor-section {
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  .editor-body {
-    flex: 1;
-    overflow-y: auto;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-  }
-
-  .empty-state {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .edit-panel-title {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 11px;
-    color: var(--muted);
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
+    font-size: 10px; letter-spacing: 0.2em; color: var(--accent);
+    margin-bottom: 14px;
   }
 
-  /* form fields */
-  .field-group {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .field-label {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.15em;
-    color: var(--muted);
-    text-transform: uppercase;
-  }
-
-  input.field, select.field {
-    background: var(--s2);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 15px;
-    padding: 7px 10px;
-    outline: none;
-    transition: border-color 0.15s;
-    width: 100%;
-  }
-
-  input.field:focus, select.field:focus { border-color: var(--accent); }
-
-  .field-row {
+  .edit-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 100px 1fr 1fr auto;
     gap: 12px;
+    align-items: start;
   }
 
-  /* color picker */
-  .swatches {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
+  .edit-preview {
+    width: 100px; height: 100px;
+    background: var(--s2); border: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 6px;
+    position: relative; overflow: hidden; flex-shrink: 0;
+  }
+  .edit-preview::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0;
+    height: 3px; background: var(--preview-color, var(--accent));
+  }
+  .edit-preview-label {
+    font-size: 14px; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: #fff; text-align: center; padding: 0 6px; line-height: 1.1;
+  }
+  .edit-preview-meta {
+    font-family: 'Share Tech Mono', monospace; font-size: 9px; color: var(--muted);
   }
 
+  .edit-fields { display: flex; flex-direction: column; gap: 8px; }
+  .field-group { display: flex; flex-direction: column; gap: 4px; }
+  .field-lbl {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px; letter-spacing: 0.15em; color: var(--muted); text-transform: uppercase;
+  }
+  input.field {
+    background: var(--s2); border: 1px solid var(--border);
+    color: var(--text); font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px; padding: 6px 8px; outline: none; width: 100%;
+    transition: border-color 0.15s;
+  }
+  input.field:focus { border-color: var(--accent); }
+
+  .field-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  .swatches { display: flex; flex-wrap: wrap; gap: 5px; }
   .swatch {
-    width: 24px; height: 24px;
-    border: 2px solid transparent;
-    cursor: pointer;
-    transition: transform 0.1s, border-color 0.1s;
+    width: 22px; height: 22px; border: 2px solid transparent;
+    cursor: pointer; transition: transform 0.1s, border-color 0.1s;
   }
-
   .swatch:hover { transform: scale(1.15); }
   .swatch.active { border-color: #fff; transform: scale(1.1); }
 
-  /* preview */
-  .btn-preview {
-    width: 120px;
-    height: 120px;
-    background: var(--s2);
-    border: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    position: relative;
-    overflow: hidden;
-    flex-shrink: 0;
-  }
-
-  .btn-preview::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 4px;
-    background: var(--preview-color, var(--accent));
-  }
-
-  .btn-preview-label {
-    font-size: 17px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #fff;
-    text-align: center;
-    padding: 0 8px;
-    line-height: 1.1;
-  }
-
-  .btn-preview-meta {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 10px;
-    color: var(--muted);
-  }
-
-  .editor-top-row {
-    display: flex;
-    gap: 20px;
-    align-items: flex-start;
-  }
-
-  .editor-fields { flex: 1; display: flex; flex-direction: column; gap: 12px; }
-
-  .form-actions {
-    display: flex;
-    gap: 8px;
-    padding-top: 4px;
-  }
+  .edit-actions { display: flex; flex-direction: column; gap: 6px; justify-content: flex-start; }
 
   .action-btn {
-    padding: 8px 20px;
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text);
+    padding: 7px 16px; background: transparent;
+    border: 1px solid var(--border); color: var(--text);
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: all 0.12s;
+    font-size: 13px; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase; cursor: pointer; transition: all 0.12s; white-space: nowrap;
   }
-
   .action-btn:hover { border-color: var(--accent); color: var(--accent); }
   .action-btn.primary { background: var(--accent); border-color: var(--accent); color: #000; }
   .action-btn.primary:hover { background: #33ddff; }
+  .action-btn.cancel { color: var(--muted); }
 
-  /* ── VIEWS SECTION ── */
-  .views-section {
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
+  /* ── VIEWS ── */
+  .views-layout { display: grid; grid-template-columns: 200px 1fr; gap: 12px; }
 
-  .views-body {
-    flex: 1;
-    overflow: hidden;
-    display: grid;
-    grid-template-columns: 220px 1fr;
-  }
-
-  /* view list */
-  .view-list-wrap {
-    border-right: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  .view-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 6px;
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-  }
+  .view-list-col { display: flex; flex-direction: column; gap: 4px; }
 
   .view-item {
-    padding: 8px 10px;
-    background: var(--s2);
-    border: 1px solid var(--border);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+    background: var(--s1); border: 1px solid var(--border);
+    padding: 9px 12px; cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between;
     transition: border-color 0.1s;
   }
-
   .view-item:hover { border-color: var(--border2); }
   .view-item.selected { border-color: var(--accent); }
 
-  .view-item-name {
-    font-size: 14px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: #fff;
-  }
-
-  .view-item-count {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 10px;
-    color: var(--muted);
-    flex-shrink: 0;
-  }
+  .view-item-name { font-size: 14px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+  .view-item-count { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--muted); }
 
   .view-del-btn {
-    background: none;
-    border: none;
-    color: var(--muted);
-    cursor: pointer;
-    font-size: 14px;
-    padding: 0 2px;
-    line-height: 1;
-    transition: color 0.1s;
+    background: none; border: none; color: var(--muted);
+    cursor: pointer; font-size: 14px; padding: 0 2px; line-height: 1;
+    transition: color 0.1s; margin-left: 8px;
   }
-
   .view-del-btn:hover { color: var(--danger); }
 
-  /* view assignment */
-  .view-assign-wrap {
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+  .new-view-row { display: flex; gap: 4px; }
+  .new-view-row input {
+    flex: 1; background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px; font-weight: 600; padding: 6px 8px; outline: none;
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .new-view-row input:focus { border-color: var(--accent); }
+
+  /* assign panel */
+  .assign-panel {
+    background: var(--s1); border: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    min-height: 140px;
   }
 
-  .view-assign-header {
-    padding: 10px 14px;
-    border-bottom: 1px solid var(--border);
+  .assign-header {
+    padding: 8px 12px; border-bottom: 1px solid var(--border);
     font-family: 'Share Tech Mono', monospace;
-    font-size: 10px;
-    color: var(--muted);
-    letter-spacing: 0.15em;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-shrink: 0;
+    font-size: 10px; color: var(--muted); letter-spacing: 0.15em;
+    display: flex; align-items: center; justify-content: space-between;
   }
 
   .assign-grid {
-    flex: 1;
-    overflow-y: auto;
-    padding: 10px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-content: flex-start;
+    display: flex; flex-wrap: wrap; gap: 8px; padding: 12px;
   }
 
-  /* assignable button tile */
   .assign-tile {
-    width: 100px;
-    height: 100px;
-    background: var(--s2);
-    border: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-    transition: border-color 0.1s, opacity 0.1s;
-    user-select: none;
+    width: 90px; height: 90px;
+    background: var(--s2); border: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 5px;
+    cursor: pointer; position: relative; overflow: hidden;
+    transition: border-color 0.1s; user-select: none;
   }
-
   .assign-tile::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 3px;
-    background: var(--tile-color, var(--accent));
+    content: ''; position: absolute; top: 0; left: 0; right: 0;
+    height: 3px; background: var(--tile-color, var(--accent));
   }
-
   .assign-tile.assigned {
     border-color: var(--tile-color, var(--accent));
     box-shadow: inset 0 0 0 1px var(--tile-color, var(--accent));
   }
-
   .assign-tile.assigned::after {
-    content: '✓';
-    position: absolute;
-    top: 5px;
-    right: 7px;
-    font-size: 11px;
-    color: var(--tile-color, var(--accent));
-    font-weight: 700;
+    content: '✓'; position: absolute; top: 4px; right: 6px;
+    font-size: 10px; font-weight: 700; color: var(--tile-color, var(--accent));
   }
-
   .assign-tile-label {
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: #fff;
-    text-align: center;
-    padding: 0 6px;
-    line-height: 1.1;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: #fff; text-align: center; padding: 0 4px; line-height: 1.1;
   }
+  .assign-tile-meta { font-family: 'Share Tech Mono', monospace; font-size: 9px; color: var(--muted); }
 
-  .assign-tile-meta {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 9px;
-    color: var(--muted);
+  .assign-empty {
+    padding: 24px; font-family: 'Share Tech Mono', monospace;
+    font-size: 10px; letter-spacing: 0.15em; color: var(--muted); text-transform: uppercase;
   }
-
-  /* ── NEW VIEW INPUT ── */
-  .new-view-row {
-    padding: 8px;
-    border-top: 1px solid var(--border);
-    display: flex;
-    gap: 4px;
-    flex-shrink: 0;
-  }
-
-  .new-view-row input {
-    flex: 1;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 14px;
-    font-weight: 600;
-    padding: 5px 8px;
-    outline: none;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .new-view-row input:focus { border-color: var(--accent); }
 
   /* ── TOAST ── */
   #toast {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: var(--s2);
-    border: 1px solid var(--border);
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 0.08em;
-    padding: 10px 16px;
-    z-index: 9999;
-    opacity: 0;
-    transform: translateY(8px);
-    transition: opacity 0.2s, transform 0.2s;
-    pointer-events: none;
+    position: fixed; bottom: 20px; right: 20px;
+    background: var(--s2); border: 1px solid var(--border);
+    font-family: 'Share Tech Mono', monospace; font-size: 11px;
+    letter-spacing: 0.08em; padding: 10px 16px; z-index: 9999;
+    opacity: 0; transform: translateY(8px);
+    transition: opacity 0.2s, transform 0.2s; pointer-events: none;
   }
-
   #toast.show { opacity: 1; transform: translateY(0); }
-  #toast.ok  { border-color: var(--success); color: var(--success); }
-  #toast.err { border-color: var(--danger);  color: var(--danger); }
-  #toast.inf { border-color: var(--accent);  color: var(--accent); }
+  #toast.ok   { border-color: var(--success); color: var(--success); }
+  #toast.err  { border-color: var(--danger);  color: var(--danger); }
+  #toast.inf  { border-color: var(--accent);  color: var(--accent); }
+  #toast.warn { border-color: var(--warn);    color: var(--warn); }
 </style>
 </head>
 <body>
 
 <!-- TOPBAR -->
 <div class="topbar">
-  <div class="logo">
-    COMPANION
-    <div class="logo-badge">ADMIN</div>
-  </div>
+  <div class="logo">COMPANION <div class="logo-badge">ADMIN</div></div>
+  <div class="topbar-sep"></div>
 
-  <div class="server-row">
+  <div class="server-field">
     <label>SERVER</label>
-    <input class="mono" type="url" id="server-url" placeholder="https://your-app.up.railway.app" style="width:280px">
+    <input class="mono" type="url" id="server-url" placeholder="https://your-app.up.railway.app" style="width:300px">
     <label>SECRET</label>
     <input class="mono" type="password" id="api-secret" placeholder="optional" style="width:130px">
     <div class="status-dot" id="status-dot"></div>
@@ -655,63 +364,88 @@
   </div>
 
   <div class="topbar-spacer"></div>
-  <button class="tb-btn primary" id="btn-push">PUSH TO SERVER</button>
+  <button class="tb-btn primary" id="btn-push">⬆ PUSH TO SURFACE</button>
 </div>
 
-<!-- BODY -->
-<div class="body">
+<!-- PAGE -->
+<div class="page">
 
-  <!-- LEFT: button list -->
-  <div class="panel-left">
-    <div class="panel-header">
-      <div class="panel-title">// BUTTONS</div>
-      <button class="tb-btn" id="btn-new">+ NEW BUTTON</button>
-    </div>
-    <div class="btn-list" id="btn-list"></div>
-  </div>
-
-  <!-- RIGHT: editor + views -->
-  <div class="panel-right">
-
-    <!-- EDITOR -->
-    <div class="editor-section">
-      <div class="panel-header">
-        <div class="panel-title">// BUTTON EDITOR</div>
-      </div>
-      <div class="editor-body" id="editor-body">
-        <div class="empty-state">SELECT A BUTTON TO EDIT</div>
+  <!-- ── SECTION 1: BUTTONS ── -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-label">// 1 — BUTTONS &nbsp;·&nbsp; create your buttons here</div>
+      <div class="section-actions">
+        <button class="tb-btn" id="btn-new">+ NEW BUTTON</button>
       </div>
     </div>
 
-    <!-- VIEWS -->
-    <div class="views-section">
-      <div class="panel-header">
-        <div class="panel-title">// VIEWS — assign buttons to named views</div>
-      </div>
-      <div class="views-body">
-
-        <!-- view list -->
-        <div class="view-list-wrap">
-          <div class="view-list" id="view-list"></div>
-          <div class="new-view-row">
-            <input type="text" id="new-view-name" placeholder="VIEW NAME" maxlength="24">
-            <button class="tb-btn" id="btn-add-view">ADD</button>
+    <!-- Edit panel (shown when a button is selected) -->
+    <div class="edit-panel" id="edit-panel">
+      <div class="edit-panel-title">// EDITING BUTTON</div>
+      <div class="edit-grid">
+        <div class="edit-preview" id="edit-preview">
+          <div class="edit-preview-label" id="preview-label">—</div>
+          <div class="edit-preview-meta"  id="preview-meta">—</div>
+        </div>
+        <div class="edit-fields">
+          <div class="field-group">
+            <div class="field-lbl">Label</div>
+            <input class="field" type="text" id="edit-label" maxlength="14" placeholder="BUTTON LABEL">
+          </div>
+          <div class="field-row2">
+            <div class="field-group">
+              <div class="field-lbl">Companion Page</div>
+              <input class="field" type="number" id="edit-page" min="1" max="99">
+            </div>
+            <div class="field-group">
+              <div class="field-lbl">Companion Bank</div>
+              <input class="field" type="number" id="edit-bank" min="1" max="32">
+            </div>
           </div>
         </div>
-
-        <!-- assignment grid -->
-        <div class="view-assign-wrap">
-          <div class="view-assign-header">
-            <span id="assign-label">SELECT A VIEW TO ASSIGN BUTTONS</span>
-            <span id="assign-count"></span>
-          </div>
-          <div class="assign-grid" id="assign-grid"></div>
+        <div class="field-group">
+          <div class="field-lbl">Colour</div>
+          <div class="swatches" id="edit-swatches"></div>
         </div>
-
+        <div class="edit-actions">
+          <button class="action-btn primary" id="edit-apply">APPLY</button>
+          <button class="action-btn cancel"  id="edit-cancel">CANCEL</button>
+        </div>
       </div>
     </div>
 
+    <div class="btn-master-grid" id="btn-master-grid"></div>
   </div>
+
+  <!-- ── SECTION 2: VIEWS ── -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-label">// 2 — VIEWS &nbsp;·&nbsp; group buttons into named views for the surface page</div>
+    </div>
+
+    <div class="views-layout">
+
+      <!-- Left: view list -->
+      <div class="view-list-col">
+        <div id="view-list"></div>
+        <div class="new-view-row">
+          <input type="text" id="new-view-name" placeholder="VIEW NAME" maxlength="24">
+          <button class="tb-btn" id="btn-add-view">ADD</button>
+        </div>
+      </div>
+
+      <!-- Right: assign buttons to selected view -->
+      <div class="assign-panel">
+        <div class="assign-header">
+          <span id="assign-title">← SELECT A VIEW TO ASSIGN BUTTONS</span>
+          <span id="assign-count"></span>
+        </div>
+        <div id="assign-grid" class="assign-grid"></div>
+      </div>
+
+    </div>
+  </div>
+
 </div>
 
 <div id="toast"></div>
@@ -724,35 +458,35 @@ const SWATCHES = [
   '#ffffff','#7c8499',
 ];
 
+// ─── SERVER URL ───────────────────────────────────────────────────────────────
+// Auto-detect when served by Railway; fall back to stored value otherwise
+const isRemote = window.location.protocol.startsWith('http') &&
+                 window.location.hostname !== 'localhost' &&
+                 window.location.hostname !== '127.0.0.1';
+
+let serverUrl = isRemote
+  ? window.location.origin
+  : (localStorage.getItem('cb_admin_server') || '');
+
+let apiSecret = localStorage.getItem('cb_admin_secret') || '';
+
 // ─── STATE ───────────────────────────────────────────────────────────────────
-let serverUrl = localStorage.getItem('cb_admin_server') || '';
-let apiSecret  = localStorage.getItem('cb_admin_secret') || '';
-
 let state = loadLocal();
-// state = { buttons: [...], views: { id: { name, buttonIds: [] } } }
-
 let selectedBtnId  = null;
 let selectedViewId = null;
-let editDraft      = null; // working copy of the selected button
+let editDraft      = null;
+let pushTimer      = null; // debounce auto-push
+
+function uid() { return Math.random().toString(36).slice(2, 9); }
 
 function defaultState() {
-  return {
-    buttons: [
-      { id: uid(), label: 'CAM 1',  page: 1, bank: 1, color: '#e63946' },
-      { id: uid(), label: 'CAM 2',  page: 1, bank: 2, color: '#457b9d' },
-      { id: uid(), label: 'WIDE',   page: 1, bank: 3, color: '#52b788' },
-      { id: uid(), label: 'TITLES', page: 1, bank: 4, color: '#e9c46a' },
-      { id: uid(), label: 'BREAK',  page: 1, bank: 5, color: '#f4a261' },
-      { id: uid(), label: 'STREAM', page: 2, bank: 1, color: '#a855f7' },
-    ],
-    views: {},
-  };
+  return { buttons: [], views: {} };
 }
 
 function loadLocal() {
   try {
-    const saved = localStorage.getItem('cb_admin_state');
-    return saved ? JSON.parse(saved) : defaultState();
+    const s = localStorage.getItem('cb_admin_state');
+    return s ? JSON.parse(s) : defaultState();
   } catch { return defaultState(); }
 }
 
@@ -760,11 +494,14 @@ function saveLocal() {
   localStorage.setItem('cb_admin_state', JSON.stringify(state));
 }
 
-function uid() { return Math.random().toString(36).slice(2, 9); }
-
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 document.getElementById('server-url').value = serverUrl;
 document.getElementById('api-secret').value = apiSecret;
+
+// If auto-detected from Railway, keep the field read-only but visible
+if (isRemote) {
+  document.getElementById('server-url').value = serverUrl;
+}
 
 document.getElementById('server-url').addEventListener('change', e => {
   serverUrl = e.target.value.trim().replace(/\/$/, '');
@@ -776,11 +513,29 @@ document.getElementById('api-secret').addEventListener('change', e => {
 });
 
 document.getElementById('btn-connect').addEventListener('click', connect);
-document.getElementById('btn-push').addEventListener('click', pushToServer);
+document.getElementById('btn-push').addEventListener('click', () => pushToServer(true));
 document.getElementById('btn-new').addEventListener('click', newButton);
 document.getElementById('btn-add-view').addEventListener('click', addView);
-document.getElementById('new-view-name').addEventListener('keydown', e => {
-  if (e.key === 'Enter') addView();
+document.getElementById('new-view-name').addEventListener('keydown', e => { if (e.key === 'Enter') addView(); });
+document.getElementById('edit-apply').addEventListener('click', applyEdit);
+document.getElementById('edit-cancel').addEventListener('click', cancelEdit);
+
+// Build swatch picker
+const swatchWrap = document.getElementById('edit-swatches');
+SWATCHES.forEach(c => {
+  const s = document.createElement('div');
+  s.className = 'swatch';
+  s.style.background = c;
+  s.dataset.color = c;
+  s.addEventListener('click', () => {
+    swatchWrap.querySelectorAll('.swatch').forEach(x => x.classList.remove('active'));
+    s.classList.add('active');
+    if (editDraft) {
+      editDraft.color = c;
+      updatePreview();
+    }
+  });
+  swatchWrap.appendChild(s);
 });
 
 render();
@@ -789,15 +544,14 @@ if (serverUrl) setTimeout(connect, 400);
 // ─── CONNECTION ───────────────────────────────────────────────────────────────
 async function connect() {
   if (!serverUrl) { toast('Enter a server URL first', 'err'); return; }
-  setDot('');
+  setDot('loading');
   try {
     await apiFetch('/health');
     setDot('ok');
-    toast('Connected', 'ok');
     await pullFromServer();
   } catch(e) {
     setDot('err');
-    toast('Cannot reach server', 'err');
+    toast('Cannot reach server — check URL', 'err');
   }
 }
 
@@ -805,26 +559,38 @@ async function pullFromServer() {
   try {
     const r = await apiFetch('/state');
     const data = await r.json();
-    if (data.buttons && data.views) {
+    if (data.buttons && data.views !== undefined) {
       state = data;
       saveLocal();
       render();
-      toast('Pulled from server', 'inf');
+      toast('Loaded from server', 'inf');
     }
   } catch(e) {
-    console.warn('pull failed', e);
+    toast('Could not load from server', 'warn');
   }
 }
 
-async function pushToServer() {
+async function pushToServer(manual = false) {
   saveLocal();
-  if (!serverUrl) { toast('Saved locally (no server)', 'inf'); return; }
+  if (!serverUrl) {
+    if (manual) toast('No server configured', 'warn');
+    return;
+  }
   try {
-    await apiFetch('/state', { method: 'PUT', body: JSON.stringify(state) });
-    toast('Pushed to server ✓', 'ok');
+    const r = await apiFetch('/state', { method: 'PUT', body: JSON.stringify(state) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    if (manual) toast('Pushed to surface ✓', 'ok');
+    setDot('ok');
   } catch(e) {
     toast('Push failed: ' + e.message, 'err');
+    setDot('err');
   }
+}
+
+// Auto-push with 600ms debounce after any change
+function schedulePush() {
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(() => pushToServer(false), 600);
 }
 
 async function apiFetch(path, opts = {}) {
@@ -834,42 +600,45 @@ async function apiFetch(path, opts = {}) {
 }
 
 function setDot(cls) {
-  const d = document.getElementById('status-dot');
-  d.className = 'status-dot ' + cls;
+  document.getElementById('status-dot').className = 'status-dot ' + cls;
 }
 
 // ─── RENDER ───────────────────────────────────────────────────────────────────
 function render() {
-  renderBtnList();
-  renderEditor();
+  renderBtnGrid();
   renderViewList();
   renderAssignGrid();
 }
 
-// ── Button list ──
-function renderBtnList() {
-  const el = document.getElementById('btn-list');
-  el.innerHTML = '';
+// ── Button master grid ──
+function renderBtnGrid() {
+  const grid = document.getElementById('btn-master-grid');
+  grid.innerHTML = '';
 
   state.buttons.forEach(btn => {
-    const row = document.createElement('div');
-    row.className = 'btn-row' + (btn.id === selectedBtnId ? ' selected' : '');
-    row.dataset.id = btn.id;
+    const card = document.createElement('div');
+    card.className = 'btn-card' + (btn.id === selectedBtnId ? ' selected' : '');
+    card.dataset.id = btn.id;
 
+    // colour bar
     const bar = document.createElement('div');
-    bar.className = 'btn-row-color';
+    bar.className = 'btn-card-bar';
     bar.style.background = btn.color;
 
-    const info = document.createElement('div');
-    info.className = 'btn-row-info';
-    info.innerHTML = `
-      <div class="btn-row-label">${esc(btn.label)}</div>
-      <div class="btn-row-meta">PAGE ${btn.page} · BANK ${btn.bank}</div>
-    `;
+    const body = document.createElement('div');
+    body.className = 'btn-card-body';
+
+    const lbl = document.createElement('div');
+    lbl.className = 'btn-card-label';
+    lbl.textContent = btn.label;
+
+    const meta = document.createElement('div');
+    meta.className = 'btn-card-meta';
+    meta.textContent = `PAGE ${btn.page}  ·  BANK ${btn.bank}`;
 
     // view chips
     const chips = document.createElement('div');
-    chips.className = 'btn-row-views';
+    chips.className = 'btn-card-chips';
     Object.values(state.views).forEach(v => {
       if (v.buttonIds.includes(btn.id)) {
         const c = document.createElement('div');
@@ -879,151 +648,88 @@ function renderBtnList() {
       }
     });
 
+    body.appendChild(lbl);
+    body.appendChild(meta);
+    body.appendChild(chips);
+
     const del = document.createElement('button');
-    del.className = 'btn-row-del';
+    del.className = 'btn-card-del';
     del.textContent = '×';
-    del.title = 'Delete button';
     del.addEventListener('click', e => { e.stopPropagation(); deleteButton(btn.id); });
 
-    row.appendChild(bar);
-    row.appendChild(info);
-    row.appendChild(chips);
-    row.appendChild(del);
-
-    row.addEventListener('click', () => selectButton(btn.id));
-    el.appendChild(row);
+    card.appendChild(bar);
+    card.appendChild(body);
+    card.appendChild(del);
+    card.addEventListener('click', () => selectButton(btn.id));
+    grid.appendChild(card);
   });
+
+  // Add card
+  const add = document.createElement('div');
+  add.className = 'btn-add-card';
+  add.textContent = '+';
+  add.addEventListener('click', newButton);
+  grid.appendChild(add);
 }
 
-// ── Editor ──
-function renderEditor() {
-  const body = document.getElementById('editor-body');
+// ── Edit panel ──
+function openEditPanel(btn) {
+  editDraft = { ...btn };
+  document.getElementById('edit-label').value = btn.label;
+  document.getElementById('edit-page').value  = btn.page;
+  document.getElementById('edit-bank').value  = btn.bank;
 
-  if (!selectedBtnId || !editDraft) {
-    body.innerHTML = '<div class="empty-state">SELECT A BUTTON TO EDIT</div>';
-    return;
-  }
-
-  body.innerHTML = '';
-
-  // top row: preview + fields
-  const topRow = document.createElement('div');
-  topRow.className = 'editor-top-row';
-
-  // preview
-  const preview = document.createElement('div');
-  preview.className = 'btn-preview';
-  preview.id = 'btn-preview';
-  preview.style.setProperty('--preview-color', editDraft.color);
-  preview.innerHTML = `
-    <div class="btn-preview-label" id="preview-label">${esc(editDraft.label)}</div>
-    <div class="btn-preview-meta" id="preview-meta">P${editDraft.page} B${editDraft.bank}</div>
-  `;
-
-  // fields
-  const fields = document.createElement('div');
-  fields.className = 'editor-fields';
-
-  // Label
-  const labelGroup = mkFieldGroup('LABEL');
-  const labelInput = mkInput('text', editDraft.label, 'BUTTON LABEL');
-  labelInput.maxLength = 14;
-  labelInput.addEventListener('input', () => {
-    editDraft.label = labelInput.value.toUpperCase();
-    document.getElementById('preview-label').textContent = editDraft.label;
-  });
-  labelGroup.appendChild(labelInput);
-  fields.appendChild(labelGroup);
-
-  // Page + Bank
-  const pbRow = document.createElement('div');
-  pbRow.className = 'field-row';
-
-  const pageGroup = mkFieldGroup('COMPANION PAGE');
-  const pageInput = mkInput('number', editDraft.page);
-  pageInput.min = 1; pageInput.max = 99;
-  pageInput.addEventListener('input', () => {
-    editDraft.page = parseInt(pageInput.value) || 1;
-    document.getElementById('preview-meta').textContent = `P${editDraft.page} B${editDraft.bank}`;
-  });
-  pageGroup.appendChild(pageInput);
-
-  const bankGroup = mkFieldGroup('COMPANION BANK');
-  const bankInput = mkInput('number', editDraft.bank);
-  bankInput.min = 1; bankInput.max = 32;
-  bankInput.addEventListener('input', () => {
-    editDraft.bank = parseInt(bankInput.value) || 1;
-    document.getElementById('preview-meta').textContent = `P${editDraft.page} B${editDraft.bank}`;
-  });
-  bankGroup.appendChild(bankInput);
-
-  pbRow.appendChild(pageGroup);
-  pbRow.appendChild(bankGroup);
-  fields.appendChild(pbRow);
-
-  topRow.appendChild(preview);
-  topRow.appendChild(fields);
-  body.appendChild(topRow);
-
-  // Color
-  const colorGroup = mkFieldGroup('COLOR');
-  const swatchWrap = document.createElement('div');
-  swatchWrap.className = 'swatches';
-  SWATCHES.forEach(c => {
-    const s = document.createElement('div');
-    s.className = 'swatch' + (c === editDraft.color ? ' active' : '');
-    s.style.background = c;
-    s.addEventListener('click', () => {
-      swatchWrap.querySelectorAll('.swatch').forEach(x => x.classList.remove('active'));
-      s.classList.add('active');
-      editDraft.color = c;
-      document.getElementById('btn-preview').style.setProperty('--preview-color', c);
-    });
-    swatchWrap.appendChild(s);
-  });
-  colorGroup.appendChild(swatchWrap);
-  body.appendChild(colorGroup);
-
-  // Actions
-  const actions = document.createElement('div');
-  actions.className = 'form-actions';
-
-  const saveBtn = document.createElement('button');
-  saveBtn.className = 'action-btn primary';
-  saveBtn.textContent = 'APPLY CHANGES';
-  saveBtn.addEventListener('click', applyEdit);
-
-  const cancelBtn = document.createElement('button');
-  cancelBtn.className = 'action-btn';
-  cancelBtn.textContent = 'CANCEL';
-  cancelBtn.addEventListener('click', () => {
-    editDraft = null;
-    selectedBtnId = null;
-    render();
+  // Set active swatch
+  document.querySelectorAll('#edit-swatches .swatch').forEach(s => {
+    s.classList.toggle('active', s.dataset.color === btn.color);
   });
 
-  actions.appendChild(saveBtn);
-  actions.appendChild(cancelBtn);
-  body.appendChild(actions);
+  updatePreview();
+  document.getElementById('edit-panel').classList.add('open');
+
+  // Live preview on input
+  document.getElementById('edit-label').oninput = () => {
+    editDraft.label = document.getElementById('edit-label').value.toUpperCase();
+    updatePreview();
+  };
+  document.getElementById('edit-page').oninput = () => {
+    editDraft.page = parseInt(document.getElementById('edit-page').value) || 1;
+    updatePreview();
+  };
+  document.getElementById('edit-bank').oninput = () => {
+    editDraft.bank = parseInt(document.getElementById('edit-bank').value) || 1;
+    updatePreview();
+  };
 }
 
-function mkFieldGroup(labelText) {
-  const g = document.createElement('div');
-  g.className = 'field-group';
-  const l = document.createElement('div');
-  l.className = 'field-label';
-  l.textContent = labelText;
-  g.appendChild(l);
-  return g;
+function updatePreview() {
+  if (!editDraft) return;
+  const p = document.getElementById('edit-preview');
+  p.style.setProperty('--preview-color', editDraft.color);
+  document.getElementById('preview-label').textContent = editDraft.label || '—';
+  document.getElementById('preview-meta').textContent  = `P${editDraft.page} B${editDraft.bank}`;
 }
 
-function mkInput(type, value, placeholder = '') {
-  const i = document.createElement('input');
-  i.type = type;
-  i.value = value;
-  i.placeholder = placeholder;
-  i.className = 'field';
-  return i;
+function closeEditPanel() {
+  document.getElementById('edit-panel').classList.remove('open');
+  selectedBtnId = null;
+  editDraft = null;
+}
+
+function applyEdit() {
+  if (!editDraft) return;
+  const idx = state.buttons.findIndex(b => b.id === editDraft.id);
+  if (idx < 0) return;
+  state.buttons[idx] = { ...editDraft };
+  closeEditPanel();
+  render();
+  schedulePush();
+  toast('Button updated', 'ok');
+}
+
+function cancelEdit() {
+  closeEditPanel();
+  render();
 }
 
 // ── View list ──
@@ -1035,18 +741,17 @@ function renderViewList() {
     const item = document.createElement('div');
     item.className = 'view-item' + (id === selectedViewId ? ' selected' : '');
 
-    const name = document.createElement('div');
+    const name  = document.createElement('div');
     name.className = 'view-item-name';
     name.textContent = view.name;
 
     const count = document.createElement('div');
     count.className = 'view-item-count';
-    count.textContent = view.buttonIds.length + ' BTN';
+    count.textContent = view.buttonIds.length + ' btn';
 
     const del = document.createElement('button');
     del.className = 'view-del-btn';
     del.textContent = '×';
-    del.title = 'Delete view';
     del.addEventListener('click', e => { e.stopPropagation(); deleteView(id); });
 
     item.appendChild(name);
@@ -1059,83 +764,80 @@ function renderViewList() {
 
 // ── Assign grid ──
 function renderAssignGrid() {
-  const grid = document.getElementById('assign-grid');
-  const label = document.getElementById('assign-label');
+  const grid    = document.getElementById('assign-grid');
+  const title   = document.getElementById('assign-title');
   const countEl = document.getElementById('assign-count');
   grid.innerHTML = '';
 
   if (!selectedViewId || !state.views[selectedViewId]) {
-    label.textContent = 'SELECT A VIEW TO ASSIGN BUTTONS';
+    title.textContent   = '← SELECT A VIEW TO ASSIGN BUTTONS';
     countEl.textContent = '';
+    grid.innerHTML = '';
     return;
   }
 
   const view = state.views[selectedViewId];
-  label.textContent = view.name;
+  title.textContent   = view.name;
   countEl.textContent = view.buttonIds.length + ' ASSIGNED';
+
+  if (state.buttons.length === 0) {
+    grid.innerHTML = '<div class="assign-empty">NO BUTTONS YET — CREATE SOME ABOVE</div>';
+    return;
+  }
 
   state.buttons.forEach(btn => {
     const assigned = view.buttonIds.includes(btn.id);
     const tile = document.createElement('div');
     tile.className = 'assign-tile' + (assigned ? ' assigned' : '');
     tile.style.setProperty('--tile-color', btn.color);
-    tile.innerHTML = `
-      <div class="assign-tile-label">${esc(btn.label)}</div>
-      <div class="assign-tile-meta">P${btn.page} B${btn.bank}</div>
-    `;
+    tile.innerHTML = `<div class="assign-tile-label">${esc(btn.label)}</div>
+                      <div class="assign-tile-meta">P${btn.page} B${btn.bank}</div>`;
     tile.addEventListener('click', () => toggleAssign(btn.id));
     grid.appendChild(tile);
   });
-
-  if (state.buttons.length === 0) {
-    grid.innerHTML = '<div style="color:var(--muted);font-family:\'Share Tech Mono\',monospace;font-size:11px;letter-spacing:.1em;padding:20px;">NO BUTTONS CREATED YET</div>';
-  }
 }
 
 // ─── ACTIONS ─────────────────────────────────────────────────────────────────
 function selectButton(id) {
   selectedBtnId = id;
-  editDraft = { ...state.buttons.find(b => b.id === id) };
-  render();
-}
-
-function applyEdit() {
-  const idx = state.buttons.findIndex(b => b.id === selectedBtnId);
-  if (idx < 0) return;
-  state.buttons[idx] = { ...editDraft };
-  saveLocal();
-  toast('Button updated', 'ok');
-  render();
+  const btn = state.buttons.find(b => b.id === id);
+  if (btn) openEditPanel(btn);
+  renderBtnGrid();
 }
 
 function newButton() {
   const btn = {
     id: uid(),
-    label: 'NEW BTN',
+    label: 'NEW',
     page: 1,
     bank: state.buttons.length + 1,
-    color: SWATCHES[Math.floor(Math.random() * SWATCHES.length)],
+    color: SWATCHES[Math.floor(Math.random() * 8)],
   };
   state.buttons.push(btn);
-  saveLocal();
+  render();
   selectButton(btn.id);
+  // Focus label input
+  setTimeout(() => {
+    const inp = document.getElementById('edit-label');
+    if (inp) { inp.focus(); inp.select(); }
+  }, 50);
 }
 
 function deleteButton(id) {
   state.buttons = state.buttons.filter(b => b.id !== id);
-  // remove from all views
   Object.values(state.views).forEach(v => {
     v.buttonIds = v.buttonIds.filter(bid => bid !== id);
   });
-  if (selectedBtnId === id) { selectedBtnId = null; editDraft = null; }
+  if (selectedBtnId === id) closeEditPanel();
   saveLocal();
   render();
+  schedulePush();
   toast('Button deleted', 'inf');
 }
 
 function addView() {
   const input = document.getElementById('new-view-name');
-  const name = input.value.trim().toUpperCase();
+  const name  = input.value.trim().toUpperCase();
   if (!name) return;
   if (Object.values(state.views).some(v => v.name === name)) {
     toast('View already exists', 'err'); return;
@@ -1145,6 +847,7 @@ function addView() {
   input.value = '';
   saveLocal();
   selectView(id);
+  schedulePush();
 }
 
 function deleteView(id) {
@@ -1152,24 +855,27 @@ function deleteView(id) {
   if (selectedViewId === id) selectedViewId = null;
   saveLocal();
   render();
+  schedulePush();
   toast('View deleted', 'inf');
 }
 
 function selectView(id) {
   selectedViewId = id;
-  render();
+  renderViewList();
+  renderAssignGrid();
 }
 
 function toggleAssign(btnId) {
   if (!selectedViewId) return;
   const view = state.views[selectedViewId];
-  const idx = view.buttonIds.indexOf(btnId);
+  const idx  = view.buttonIds.indexOf(btnId);
   if (idx >= 0) view.buttonIds.splice(idx, 1);
   else view.buttonIds.push(btnId);
   saveLocal();
-  renderBtnList();
+  renderBtnGrid();
   renderViewList();
   renderAssignGrid();
+  schedulePush();
 }
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
