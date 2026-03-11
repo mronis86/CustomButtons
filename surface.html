@@ -26,260 +26,118 @@
     background: var(--bg);
     color: var(--text);
     font-family: 'Barlow Condensed', sans-serif;
-    display: flex;
-    flex-direction: column;
+    display: flex; flex-direction: column;
   }
 
   body::after {
     content: '';
-    position: fixed;
-    inset: 0;
+    position: fixed; inset: 0;
     background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px);
-    pointer-events: none;
-    z-index: 9000;
+    pointer-events: none; z-index: 9000;
   }
 
   /* ── FIRST-RUN OVERLAY ── */
   #setup {
-    position: fixed;
-    inset: 0;
-    background: var(--bg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 800;
-    flex-direction: column;
-    gap: 0;
+    position: fixed; inset: 0; background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 800; flex-direction: column;
   }
-
   #setup.hidden { display: none; }
 
   .setup-box {
-    background: var(--s1);
-    border: 1px solid var(--border);
-    width: 380px;
-    padding: 32px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
+    background: var(--s1); border: 1px solid var(--border);
+    width: 380px; padding: 32px;
+    display: flex; flex-direction: column; gap: 20px;
   }
-
-  .setup-title {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 0.2em;
-    color: var(--accent);
-  }
-
-  .setup-desc {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 10px;
-    color: var(--muted);
-    line-height: 1.7;
-    letter-spacing: 0.04em;
-  }
-
-  .setup-field {
-    display: flex;
-    flex-direction: column;
-    gap: 7px;
-  }
-
-  .setup-field label {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.15em;
-    color: var(--muted);
-    text-transform: uppercase;
-  }
-
+  .setup-title { font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 0.2em; color: var(--accent); }
+  .setup-desc  { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--muted); line-height: 1.7; letter-spacing: 0.04em; }
+  .setup-field { display: flex; flex-direction: column; gap: 7px; }
+  .setup-field label { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 0.15em; color: var(--muted); text-transform: uppercase; }
   .setup-field input {
-    background: var(--s2);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 13px;
-    padding: 10px 12px;
-    outline: none;
-    width: 100%;
-    transition: border-color 0.15s;
+    background: var(--s2); border: 1px solid var(--border); color: var(--text);
+    font-family: 'Share Tech Mono', monospace; font-size: 13px;
+    padding: 10px 12px; outline: none; width: 100%; transition: border-color 0.15s;
   }
-
   .setup-field input:focus { border-color: var(--accent); }
-
   .setup-btn {
-    padding: 12px;
-    background: var(--accent);
-    border: none;
-    color: #000;
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 15px;
-    font-weight: 900;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    cursor: pointer;
-    width: 100%;
-    transition: background 0.12s;
+    padding: 12px; background: var(--accent); border: none; color: #000;
+    font-family: 'Barlow Condensed', sans-serif; font-size: 15px; font-weight: 900;
+    letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; width: 100%;
   }
   .setup-btn:hover { background: #33ddff; }
-
-  .setup-note {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 9px;
-    color: var(--muted);
-    text-align: center;
-    letter-spacing: 0.05em;
-  }
+  .setup-note { font-family: 'Share Tech Mono', monospace; font-size: 9px; color: var(--muted); text-align: center; }
 
   /* ── TOPBAR ── */
   .topbar {
-    height: 46px;
-    background: var(--s1);
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    padding: 0 16px;
-    gap: 12px;
-    flex-shrink: 0;
-    z-index: 100;
+    height: 46px; background: var(--s1); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 16px; gap: 12px;
+    flex-shrink: 0; z-index: 100;
   }
 
-  .logo {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 0.2em;
-    color: var(--accent);
-    flex-shrink: 0;
-  }
-
+  .logo { font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 0.2em; color: var(--accent); flex-shrink: 0; }
   .divider { width: 1px; height: 22px; background: var(--border); flex-shrink: 0; }
 
-  .view-tabs {
-    display: flex;
-    gap: 4px;
-    flex: 1;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
+  .view-tabs { display: flex; gap: 4px; flex: 1; overflow-x: auto; scrollbar-width: none; }
   .view-tabs::-webkit-scrollbar { display: none; }
 
   .view-tab {
-    height: 28px;
-    padding: 0 14px;
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--muted);
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: all 0.12s;
-    white-space: nowrap;
-    flex-shrink: 0;
+    height: 28px; padding: 0 14px; background: transparent;
+    border: 1px solid var(--border); color: var(--muted);
+    font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer;
+    transition: all 0.12s; white-space: nowrap; flex-shrink: 0;
   }
   .view-tab:hover { color: var(--text); }
   .view-tab.active { background: var(--accent); border-color: var(--accent); color: #000; }
 
-  .topbar-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-left: auto;
-    flex-shrink: 0;
-  }
+  .topbar-right { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-shrink: 0; }
 
-  .status-dot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: var(--muted);
-    transition: all 0.3s;
-  }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); transition: all 0.3s; }
   .status-dot.ok      { background: var(--success); box-shadow: 0 0 5px var(--success); }
   .status-dot.err     { background: var(--danger);  box-shadow: 0 0 5px var(--danger); }
   .status-dot.loading { background: var(--accent); animation: pulse 1s infinite; }
-  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.2; } }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.2} }
 
-  /* small gear to re-open setup */
-  .gear-btn {
-    background: none;
-    border: none;
-    color: var(--muted);
-    font-size: 14px;
-    cursor: pointer;
-    padding: 2px 4px;
-    line-height: 1;
-    transition: color 0.1s;
+  /* StreamDeck connect button */
+  .deck-btn {
+    height: 26px; padding: 0 10px;
+    background: transparent; border: 1px solid var(--border);
+    color: var(--muted); font-family: 'Share Tech Mono', monospace;
+    font-size: 10px; letter-spacing: 0.1em; cursor: pointer;
+    transition: all 0.12s; display: flex; align-items: center; gap: 5px;
+    white-space: nowrap;
   }
+  .deck-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .deck-btn.connected { border-color: var(--success); color: var(--success); }
+  .deck-btn.connected:hover { border-color: var(--danger); color: var(--danger); }
+
+  .deck-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+  .gear-btn { background: none; border: none; color: var(--muted); font-size: 14px; cursor: pointer; padding: 2px 4px; line-height: 1; transition: color 0.1s; }
   .gear-btn:hover { color: var(--accent); }
 
   /* ── GRID AREA ── */
-  .grid-area {
-    flex: 1;
-    overflow-y: auto;
-    padding: 18px;
-    position: relative;
-  }
+  .grid-area { flex: 1; overflow-y: auto; padding: 18px; position: relative; }
 
   .grid-area::before {
-    content: '';
-    position: fixed;
-    inset: 46px 0 0;
-    background-image:
-      linear-gradient(var(--border) 1px, transparent 1px),
-      linear-gradient(90deg, var(--border) 1px, transparent 1px);
-    background-size: 48px 48px;
-    opacity: 0.15;
-    pointer-events: none;
+    content: ''; position: fixed; inset: 46px 0 0;
+    background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 48px 48px; opacity: 0.15; pointer-events: none;
   }
 
-  .button-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 140px));
-    gap: 10px;
-    position: relative;
-    z-index: 1;
-  }
+  .button-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 140px)); gap: 10px; position: relative; z-index: 1; }
 
   /* ── TRIGGER BUTTON ── */
   .trig-btn {
-    aspect-ratio: 1;
-    background: var(--s2);
-    border: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
+    aspect-ratio: 1; background: var(--s2); border: 1px solid var(--border);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    cursor: pointer; position: relative; overflow: hidden;
     transition: transform 0.08s, box-shadow 0.1s;
-    -webkit-tap-highlight-color: transparent;
-    user-select: none;
+    -webkit-tap-highlight-color: transparent; user-select: none;
   }
-
-  .trig-btn::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 4px;
-    background: var(--btn-color, var(--accent));
-    transition: height 0.1s;
-  }
+  .trig-btn::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--btn-color, var(--accent)); transition: height 0.1s; }
   .trig-btn:hover::before { height: 6px; }
-
-  .trig-btn::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: var(--btn-color, var(--accent));
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.05s;
-  }
-
+  .trig-btn::after { content: ''; position: absolute; inset: 0; background: var(--btn-color, var(--accent)); opacity: 0; pointer-events: none; transition: opacity 0.05s; }
   .trig-btn.pressing::after { opacity: 0.2; }
   .trig-btn.pressing { transform: scale(0.94); }
   .trig-btn:hover { box-shadow: 0 0 0 1px var(--btn-color, var(--accent)); }
@@ -289,59 +147,26 @@
   .trig-btn.success-flash { animation: flash-ok  0.4s ease-out; }
   .trig-btn.error-flash   { animation: flash-err 0.4s ease-out; }
 
-  .trig-label {
-    font-size: 17px;
-    font-weight: 700;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-    color: #fff;
-    text-align: center;
-    padding: 0 10px;
-    line-height: 1.1;
-    pointer-events: none;
-  }
-
-  .trig-meta {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 10px;
-    color: var(--muted);
-    pointer-events: none;
-  }
+  .trig-label { font-size: 17px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: #fff; text-align: center; padding: 0 10px; line-height: 1.1; pointer-events: none; }
+  .trig-meta  { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--muted); pointer-events: none; }
 
   /* ── CENTER STATE ── */
   .center-state {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 14px;
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 0.2em;
-    color: var(--muted);
-    text-transform: uppercase;
-    pointer-events: none;
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 14px;
+    font-family: 'Share Tech Mono', monospace; font-size: 11px;
+    letter-spacing: 0.2em; color: var(--muted); text-transform: uppercase; pointer-events: none;
   }
   .center-state .icon { font-size: 28px; opacity: 0.25; }
 
   /* ── TOAST ── */
   #toast {
-    position: fixed;
-    bottom: 16px;
-    right: 16px;
-    background: var(--s2);
-    border: 1px solid var(--border);
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 0.08em;
-    padding: 9px 14px;
-    z-index: 9999;
-    opacity: 0;
-    transform: translateY(6px);
-    transition: opacity 0.18s, transform 0.18s;
-    pointer-events: none;
+    position: fixed; bottom: 16px; right: 16px;
+    background: var(--s2); border: 1px solid var(--border);
+    font-family: 'Share Tech Mono', monospace; font-size: 11px;
+    letter-spacing: 0.08em; padding: 9px 14px; z-index: 9999;
+    opacity: 0; transform: translateY(6px);
+    transition: opacity 0.18s, transform 0.18s; pointer-events: none;
   }
   #toast.show { opacity: 1; transform: translateY(0); }
   #toast.ok  { border-color: var(--success); color: var(--success); }
@@ -351,17 +176,15 @@
 </head>
 <body>
 
-<!-- FIRST-RUN SETUP — hidden after URL is saved -->
+<!-- FIRST-RUN SETUP -->
 <div id="setup">
   <div class="setup-box">
     <div class="setup-title">// COMPANION REMOTE — CONNECT</div>
     <div class="setup-desc">Enter the Railway server URL below.<br>This is saved to your browser and won't be asked again.</div>
-
     <div class="setup-field">
       <label>Railway Server URL</label>
       <input type="url" id="setup-url" placeholder="https://your-app.up.railway.app" autocomplete="off" spellcheck="false">
     </div>
-
     <button class="setup-btn" id="setup-go">CONNECT</button>
     <div class="setup-note">Tap ⚙ in the top bar any time to change this.</div>
   </div>
@@ -373,6 +196,10 @@
   <div class="divider"></div>
   <div class="view-tabs" id="view-tabs"></div>
   <div class="topbar-right">
+    <button class="deck-btn" id="deck-btn" title="Connect StreamDeck via USB">
+      <div class="deck-dot"></div>
+      <span id="deck-label">STREAMDECK</span>
+    </button>
     <div class="status-dot loading" id="status-dot"></div>
     <button class="gear-btn" id="gear-btn" title="Change server">⚙</button>
   </div>
@@ -390,10 +217,9 @@
 <div id="toast"></div>
 
 <script>
-// ─── SERVER URL ───────────────────────────────────────────────────────────────
-// When served by Railway, derive the URL automatically from window.location.
-// Only show the setup prompt if opened from a local file or unknown origin.
-
+// ═══════════════════════════════════════════════════════════════════
+// SERVER URL
+// ═══════════════════════════════════════════════════════════════════
 const isRemote = window.location.protocol.startsWith('http') &&
                  window.location.hostname !== 'localhost' &&
                  window.location.hostname !== '127.0.0.1';
@@ -402,18 +228,14 @@ let SERVER = isRemote
   ? window.location.origin
   : (localStorage.getItem('cb_server_url') || '');
 
-// ─── SETUP OVERLAY ────────────────────────────────────────────────────────────
-const setupEl = document.getElementById('setup');
+// ═══════════════════════════════════════════════════════════════════
+// SETUP OVERLAY
+// ═══════════════════════════════════════════════════════════════════
+const setupEl    = document.getElementById('setup');
 const setupInput = document.getElementById('setup-url');
 
-function showSetup() {
-  setupInput.value = SERVER;
-  setupEl.classList.remove('hidden');
-}
-
-function hideSetup() {
-  setupEl.classList.add('hidden');
-}
+function showSetup() { setupInput.value = SERVER; setupEl.classList.remove('hidden'); }
+function hideSetup() { setupEl.classList.add('hidden'); }
 
 document.getElementById('setup-go').addEventListener('click', doSetup);
 setupInput.addEventListener('keydown', e => { if (e.key === 'Enter') doSetup(); });
@@ -428,21 +250,17 @@ function doSetup() {
   init();
 }
 
-// Auto-start — skip setup if we have a URL
-if (SERVER) {
-  hideSetup();
-  init();
-}
+if (SERVER) { hideSetup(); init(); }
 
-// ─── STATE ────────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+// APP STATE
+// ═══════════════════════════════════════════════════════════════════
 let appState   = null;
 let activeView = localStorage.getItem('cb_view') || null;
 
-// ─── INIT ─────────────────────────────────────────────────────────────────────
 async function init() {
   setDot('loading');
   setCenterMsg('CONNECTING…');
-
   try {
     const r = await fetch(SERVER + '/state');
     if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -451,33 +269,31 @@ async function init() {
     setDot('ok');
     renderTabs();
     renderGrid();
+    deckSync(); // push current buttons to deck if connected
   } catch(e) {
     setDot('err');
     setCenterMsg('CANNOT REACH SERVER');
     toast('Cannot connect — tap ⚙ to check server URL', 'err');
-
-    // Fall back to cache so page is usable offline
     const cached = localStorage.getItem('cb_state_cache');
     if (cached) {
       appState = JSON.parse(cached);
       renderTabs();
       renderGrid();
+      deckSync();
       toast('Showing cached layout', 'inf');
     }
   }
 }
 
-// ─── RENDER ───────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════════════
 function renderTabs() {
   const tabs = document.getElementById('view-tabs');
   tabs.innerHTML = '';
   if (!appState?.views) return;
-
   const entries = Object.entries(appState.views);
-  if (!activeView || !appState.views[activeView]) {
-    activeView = entries[0]?.[0] || null;
-  }
-
+  if (!activeView || !appState.views[activeView]) activeView = entries[0]?.[0] || null;
   entries.forEach(([id, view]) => {
     const tab = document.createElement('button');
     tab.className = 'view-tab' + (id === activeView ? ' active' : '');
@@ -495,31 +311,17 @@ function renderTabs() {
 function renderGrid() {
   const grid = document.getElementById('button-grid');
   grid.innerHTML = '';
-
-  if (!appState || !activeView || !appState.views[activeView]) {
-    setCenterMsg('NO VIEW SELECTED');
-    return;
-  }
-
+  if (!appState || !activeView || !appState.views[activeView]) { setCenterMsg('NO VIEW SELECTED'); return; }
   const ids  = appState.views[activeView].buttonIds || [];
   const btns = ids.map(id => appState.buttons.find(b => b.id === id)).filter(Boolean);
-
-  if (btns.length === 0) {
-    setCenterMsg('NO BUTTONS IN THIS VIEW');
-    return;
-  }
-
+  if (btns.length === 0) { setCenterMsg('NO BUTTONS IN THIS VIEW'); return; }
   setCenterMsg(null);
-
   btns.forEach(btn => {
     const el = document.createElement('div');
     el.className = 'trig-btn';
     el.style.setProperty('--btn-color', btn.color);
-    el.innerHTML = `
-      <div class="trig-label">${esc(btn.label)}</div>
-      <div class="trig-meta">P${btn.page} R${btn.row ?? 0} C${btn.col ?? 0}</div>
-    `;
-
+    el.innerHTML = `<div class="trig-label">${esc(btn.label)}</div>
+                    <div class="trig-meta">P${btn.page} R${btn.row??0} C${btn.col??0}</div>`;
     const pressStart = () => el.classList.add('pressing');
     const pressEnd   = () => el.classList.remove('pressing');
     el.addEventListener('mousedown',  pressStart);
@@ -527,14 +329,18 @@ function renderGrid() {
     el.addEventListener('mouseleave', pressEnd);
     el.addEventListener('touchstart', pressStart, { passive: true });
     el.addEventListener('touchend',   pressEnd);
-    el.addEventListener('click', () => trigger(btn, el));
-
+    el.addEventListener('click', () => fireTrigger(btn, el));
     grid.appendChild(el);
   });
 }
 
-// ─── TRIGGER ─────────────────────────────────────────────────────────────────
-async function trigger(btn, el) {
+// ═══════════════════════════════════════════════════════════════════
+// TRIGGER  (shared by screen buttons AND StreamDeck keys)
+// ═══════════════════════════════════════════════════════════════════
+async function fireTrigger(btn, screenEl) {
+  // Flash screen button if provided
+  if (screenEl) flash(screenEl, 'pressing');
+
   try {
     const r = await fetch(SERVER + '/trigger', {
       method: 'POST',
@@ -543,26 +349,365 @@ async function trigger(btn, el) {
     });
     const data = await r.json();
     if (data.ok) {
-      flash(el, 'success-flash');
+      if (screenEl) flash(screenEl, 'success-flash');
+      deckFlash(btn._deckKey); // flash the physical key too
     } else {
-      flash(el, 'error-flash');
+      if (screenEl) flash(screenEl, 'error-flash');
       toast('Error: ' + (data.error || 'unknown'), 'err');
     }
   } catch(e) {
-    flash(el, 'error-flash');
+    if (screenEl) flash(screenEl, 'error-flash');
     toast('Trigger failed — check connection', 'err');
   }
 }
 
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+// STREAMDECK  (WebHID)
+// ═══════════════════════════════════════════════════════════════════
+
+/*
+  StreamDeck models and their key grid sizes:
+  Original (15 keys): 5 cols × 3 rows, 72×72px images
+  Mini (6 keys):      3 cols × 2 rows, 80×80px images
+  XL (32 keys):       8 cols × 4 rows, 96×96px images
+  MK2 (15 keys):      5 cols × 3 rows, 72×72px images
+  Plus (8 keys):      4 cols × 2 rows, 120×120px images
+
+  We detect the model by key count / product ID and adapt accordingly.
+*/
+
+const DECK_MODELS = {
+  // [vendorId, productId] → { cols, rows, keySize, reportOffset, headerLen }
+  // Elgato vendor: 0x0fd9
+  // Keys image format: BMP (original) or JPEG (newer)
+  0x0060: { name: 'Original',  cols: 5, rows: 3, keySize: 72,  imgFmt: 'bmp',  headerLen: 16, reportSize: 8191 },
+  0x006d: { name: 'Original2', cols: 5, rows: 3, keySize: 72,  imgFmt: 'jpeg', headerLen: 16, reportSize: 1024 },
+  0x0063: { name: 'Mini',      cols: 3, rows: 2, keySize: 80,  imgFmt: 'bmp',  headerLen: 16, reportSize: 1008 },
+  0x0090: { name: 'MiniMK2',   cols: 3, rows: 2, keySize: 80,  imgFmt: 'jpeg', headerLen: 16, reportSize: 1024 },
+  0x006c: { name: 'XL',        cols: 8, rows: 4, keySize: 96,  imgFmt: 'jpeg', headerLen: 16, reportSize: 1024 },
+  0x0080: { name: 'MK2',       cols: 5, rows: 3, keySize: 72,  imgFmt: 'jpeg', headerLen: 16, reportSize: 1024 },
+  0x0084: { name: 'Plus',      cols: 4, rows: 2, keySize: 120, imgFmt: 'jpeg', headerLen: 16, reportSize: 1024 },
+};
+
+const ELGATO_VENDOR = 0x0fd9;
+
+let deckDevice  = null;   // HIDDevice
+let deckModel   = null;   // model info
+let deckButtons = [];     // flat array of btn objects mapped to key indices
+let deckKeyDown = {};     // track which keys are pressed
+
+const deckBtn   = document.getElementById('deck-btn');
+const deckLabel = document.getElementById('deck-label');
+
+deckBtn.addEventListener('click', () => {
+  if (deckDevice) {
+    disconnectDeck();
+  } else {
+    connectDeck();
+  }
+});
+
+async function connectDeck() {
+  if (!navigator.hid) {
+    toast('WebHID not supported — use Chrome or Edge', 'err');
+    return;
+  }
+  try {
+    const devices = await navigator.hid.requestDevice({
+      filters: [{ vendorId: ELGATO_VENDOR }]
+    });
+    if (!devices.length) return;
+
+    const dev = devices[0];
+    deckModel = DECK_MODELS[dev.productId] || DECK_MODELS[0x006d]; // fallback to Original2
+    deckModel.totalKeys = deckModel.cols * deckModel.rows;
+
+    await dev.open();
+    deckDevice = dev;
+
+    dev.addEventListener('inputreport', onDeckInput);
+
+    setDeckUI(true, deckModel.name);
+    toast(`StreamDeck ${deckModel.name} connected`, 'ok');
+    deckSync();
+  } catch(e) {
+    if (e.name !== 'NotAllowedError') {
+      toast('StreamDeck connect failed: ' + e.message, 'err');
+    }
+  }
+}
+
+function disconnectDeck() {
+  if (deckDevice) {
+    deckDevice.close().catch(() => {});
+    deckDevice = null;
+  }
+  setDeckUI(false);
+  toast('StreamDeck disconnected', 'inf');
+}
+
+function setDeckUI(connected, modelName) {
+  deckBtn.classList.toggle('connected', connected);
+  deckLabel.textContent = connected ? `⏏ ${modelName}` : 'STREAMDECK';
+  deckBtn.title = connected ? 'Disconnect StreamDeck' : 'Connect StreamDeck via USB';
+}
+
+// ── Build the button→key mapping and push images ──────────────────
+function deckSync() {
+  if (!deckDevice || !appState) return;
+
+  // Flatten ALL buttons across all views (deduplicated by id)
+  const seen = new Set();
+  const allBtns = [];
+  Object.values(appState.views).forEach(view => {
+    (view.buttonIds || []).forEach(id => {
+      if (!seen.has(id)) {
+        seen.add(id);
+        const btn = appState.buttons.find(b => b.id === id);
+        if (btn) allBtns.push(btn);
+      }
+    });
+  });
+
+  deckButtons = [];
+  const total = deckModel.totalKeys;
+
+  for (let i = 0; i < total; i++) {
+    const btn = allBtns[i] || null;
+    deckButtons[i] = btn;
+    if (btn) btn._deckKey = i;
+    drawDeckKey(i, btn);
+  }
+}
+
+// ── Draw a key using Canvas → send image over HID ────────────────
+async function drawDeckKey(keyIndex, btn) {
+  if (!deckDevice) return;
+
+  const size = deckModel.keySize;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d');
+
+  if (btn) {
+    // Background — button colour darkened
+    ctx.fillStyle = darken(btn.color, 0.35);
+    ctx.fillRect(0, 0, size, size);
+
+    // Colour bar at top
+    ctx.fillStyle = btn.color;
+    ctx.fillRect(0, 0, size, Math.max(4, size * 0.06));
+
+    // Label text — word wrap
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const words = btn.label.toUpperCase().split(' ');
+    const lineH = size * 0.22;
+    const fontSize = Math.round(size * 0.18);
+    ctx.font = `700 ${fontSize}px "Barlow Condensed", sans-serif`;
+
+    // Simple two-line wrap
+    let lines = [];
+    if (words.length === 1) {
+      lines = [words[0]];
+    } else {
+      const mid = Math.ceil(words.length / 2);
+      lines = [words.slice(0, mid).join(' '), words.slice(mid).join(' ')];
+    }
+
+    const totalH = lines.length * lineH;
+    const startY = (size - totalH) / 2 + lineH / 2;
+    lines.forEach((line, i) => {
+      ctx.fillText(line, size / 2, startY + i * lineH, size - 8);
+    });
+
+  } else {
+    // Empty key — dark blank
+    ctx.fillStyle = '#0d0f12';
+    ctx.fillRect(0, 0, size, size);
+  }
+
+  // Convert canvas to the right image format and send
+  await sendKeyImage(keyIndex, canvas);
+}
+
+async function deckFlash(keyIndex) {
+  if (!deckDevice || keyIndex === undefined) return;
+  const btn = deckButtons[keyIndex];
+  if (!btn) return;
+
+  // Draw bright flash
+  const size = deckModel.keySize;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = btn.color;
+  ctx.fillRect(0, 0, size, size);
+  ctx.fillStyle = '#000';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `700 ${Math.round(size*0.18)}px "Barlow Condensed", sans-serif`;
+  ctx.fillText(btn.label.toUpperCase(), size/2, size/2, size-8);
+  await sendKeyImage(keyIndex, canvas);
+
+  // Restore after 300ms
+  setTimeout(() => drawDeckKey(keyIndex, btn), 300);
+}
+
+// ── Send image to a StreamDeck key ───────────────────────────────
+async function sendKeyImage(keyIndex, canvas) {
+  if (!deckDevice) return;
+
+  const size     = deckModel.keySize;
+  const fmt      = deckModel.imgFmt;
+  const repSize  = deckModel.reportSize;
+
+  // Get image bytes
+  let imgBytes;
+  if (fmt === 'jpeg') {
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.9));
+    imgBytes = new Uint8Array(await blob.arrayBuffer());
+  } else {
+    // BMP — StreamDeck Original needs 24-bit BMP, flipped horizontally
+    imgBytes = canvasToBMP(canvas);
+  }
+
+  // StreamDeck v2 protocol: split into 1024-byte reports
+  const pageSize  = repSize - 8; // payload per report
+  const pageCount = Math.ceil(imgBytes.length / pageSize);
+
+  for (let page = 0; page < pageCount; page++) {
+    const isLast = (page === pageCount - 1);
+    const chunk  = imgBytes.slice(page * pageSize, (page + 1) * pageSize);
+
+    const report = new Uint8Array(repSize);
+    report[0] = 0x02;      // report ID
+    report[1] = 0x07;      // image write command
+    report[2] = keyIndex;
+    report[3] = isLast ? 1 : 0;
+    report[4] = chunk.length & 0xff;
+    report[5] = (chunk.length >> 8) & 0xff;
+    report[6] = page & 0xff;
+    report[7] = (page >> 8) & 0xff;
+    report.set(chunk, 8);
+
+    try {
+      await deckDevice.sendReport(0x02, report.slice(1));
+    } catch(e) {
+      console.warn('sendReport failed:', e);
+      disconnectDeck();
+      return;
+    }
+  }
+}
+
+// ── Handle key press/release from StreamDeck ─────────────────────
+function onDeckInput(event) {
+  const data = new Uint8Array(event.data.buffer);
+
+  // Report ID 0x01 = key state
+  // Bytes 3..N = key states (1=pressed, 0=released) for each key index
+  if (data[0] !== 0x01) return;
+
+  const total = deckModel.totalKeys;
+  for (let i = 0; i < total; i++) {
+    const pressed = data[i + 3] === 1;
+    const wasDown = deckKeyDown[i] || false;
+
+    if (pressed && !wasDown) {
+      // Key down — fire trigger
+      deckKeyDown[i] = true;
+      const btn = deckButtons[i];
+      if (btn) {
+        // Find the matching screen element if visible
+        const screenEl = findScreenEl(btn);
+        fireTrigger(btn, screenEl);
+      }
+    } else if (!pressed && wasDown) {
+      deckKeyDown[i] = false;
+    }
+  }
+}
+
+function findScreenEl(btn) {
+  // Try to find the on-screen button element for visual feedback
+  const grid = document.getElementById('button-grid');
+  const tiles = grid.querySelectorAll('.trig-btn');
+  // Match by position in current view
+  if (!appState || !activeView) return null;
+  const ids  = appState.views[activeView]?.buttonIds || [];
+  const btns = ids.map(id => appState.buttons.find(b => b.id === id)).filter(Boolean);
+  const idx  = btns.findIndex(b => b.id === btn.id);
+  return idx >= 0 ? tiles[idx] : null;
+}
+
+// ── Canvas → BMP bytes (for older StreamDeck models) ─────────────
+function canvasToBMP(canvas) {
+  const w = canvas.width, h = canvas.height;
+  const ctx = canvas.getContext('2d');
+  const imgData = ctx.getImageData(0, 0, w, h);
+  const pixels  = imgData.data;
+
+  const rowSize   = w * 3;
+  const padded    = Math.ceil(rowSize / 4) * 4;
+  const pixelData = new Uint8Array(padded * h);
+
+  // BMP stores bottom-to-top, BGR — StreamDeck Original also wants horizontal flip
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const srcX = w - 1 - x; // horizontal flip
+      const srcY = h - 1 - y; // vertical flip (BMP is bottom-up)
+      const si   = (srcY * w + srcX) * 4;
+      const di   = y * padded + x * 3;
+      pixelData[di]     = pixels[si + 2]; // B
+      pixelData[di + 1] = pixels[si + 1]; // G
+      pixelData[di + 2] = pixels[si];     // R
+    }
+  }
+
+  const fileSize  = 54 + pixelData.length;
+  const buf       = new ArrayBuffer(fileSize);
+  const view      = new DataView(buf);
+
+  // BMP file header
+  view.setUint16(0,  0x4d42, true); // 'BM'
+  view.setUint32(2,  fileSize, true);
+  view.setUint32(6,  0, true);
+  view.setUint32(10, 54, true);     // pixel data offset
+
+  // DIB header (BITMAPINFOHEADER)
+  view.setUint32(14, 40, true);     // header size
+  view.setInt32 (18, w,  true);
+  view.setInt32 (22, -h, true);     // negative = top-down (already flipped above)
+  view.setUint16(26, 1,  true);     // planes
+  view.setUint16(28, 24, true);     // bits per pixel
+  view.setUint32(30, 0,  true);     // no compression
+  view.setUint32(34, pixelData.length, true);
+
+  new Uint8Array(buf, 54).set(pixelData);
+  return new Uint8Array(buf);
+}
+
+// ── Colour helper ─────────────────────────────────────────────────
+function darken(hex, amount) {
+  const n = parseInt(hex.replace('#',''), 16);
+  const r = Math.max(0, ((n >> 16) & 0xff) * (1 - amount));
+  const g = Math.max(0, ((n >> 8)  & 0xff) * (1 - amount));
+  const b = Math.max(0, ((n)       & 0xff) * (1 - amount));
+  return `rgb(${r|0},${g|0},${b|0})`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════════
 function flash(el, cls) {
+  if (!el) return;
   el.classList.add(cls);
   setTimeout(() => el.classList.remove(cls), 450);
 }
 
-function setDot(cls) {
-  document.getElementById('status-dot').className = 'status-dot ' + cls;
-}
+function setDot(cls) { document.getElementById('status-dot').className = 'status-dot ' + cls; }
 
 function setCenterMsg(msg) {
   const el = document.getElementById('center-state');
@@ -571,9 +716,7 @@ function setCenterMsg(msg) {
   document.getElementById('center-msg').textContent = msg;
 }
 
-function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 let toastTimer;
 function toast(msg, type = 'inf') {
@@ -582,6 +725,24 @@ function toast(msg, type = 'inf') {
   el.className = 'show ' + type;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { el.className = ''; }, 3000);
+}
+
+// Auto-reconnect StreamDeck if previously connected (browser remembers permission)
+if (navigator.hid) {
+  navigator.hid.getDevices().then(devices => {
+    const deck = devices.find(d => d.vendorId === ELGATO_VENDOR);
+    if (deck) {
+      deckModel = DECK_MODELS[deck.productId] || DECK_MODELS[0x006d];
+      deckModel.totalKeys = deckModel.cols * deckModel.rows;
+      deck.open().then(() => {
+        deckDevice = deck;
+        deck.addEventListener('inputreport', onDeckInput);
+        setDeckUI(true, deckModel.name);
+        toast(`StreamDeck ${deckModel.name} auto-reconnected`, 'ok');
+        deckSync();
+      }).catch(() => {});
+    }
+  });
 }
 </script>
 </body>
