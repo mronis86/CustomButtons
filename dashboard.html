@@ -329,10 +329,18 @@ function doSetup() {
   init();
 }
 
+function normalizeDashUrl(raw) {
+  let url = (raw || '').trim();
+  if (!url) return '';
+  // Avoid relative paths like "192.168.x.x:3003/..." against Railway origin
+  if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(url)) url = 'http://' + url;
+  return url;
+}
+
 function resolveDashUrl() {
   // Local override wins if set; otherwise use Admin/server value
-  if (DASH_OVERRIDE) return DASH_OVERRIDE;
-  return (appState && typeof appState.dashUrl === 'string') ? appState.dashUrl.trim() : '';
+  if (DASH_OVERRIDE) return normalizeDashUrl(DASH_OVERRIDE);
+  return normalizeDashUrl(appState?.dashUrl || '');
 }
 
 function loadDashboard() {

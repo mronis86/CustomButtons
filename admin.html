@@ -398,13 +398,16 @@
       <div class="dash-config-row">
         <div class="field-group" style="flex:1;min-width:240px;">
           <div class="field-lbl">DashBoard Embed URL</div>
-          <input class="field" type="url" id="dash-url" placeholder="http://dashboard-host:port/... (leave blank until you have one)" autocomplete="off" spellcheck="false">
+          <input class="field" type="url" id="dash-url" placeholder="http://192.168.1.233:3003/" autocomplete="off" spellcheck="false">
         </div>
         <button class="tb-btn primary" id="btn-save-dash" style="margin-top:16px;">SAVE URL</button>
       </div>
       <div class="dash-hint">
-        Temporary or permanent URL is fine — change it anytime and push.
-        The <a href="/dashboard" target="_blank" rel="noopener">/dashboard</a> page reads this from the server.
+        Include <strong>http://</strong> (or https://). Example: <code>http://192.168.1.233:3003/</code> —
+        not just the IP. Prefer the UI root, not <code>/ultritouch-health</code> (that’s usually an API check).
+        <br>If Admin is on Railway (https), a local http embed may be blocked by the browser — open
+        <a href="/dashboard" target="_blank" rel="noopener">/dashboard</a> from a machine on the same LAN,
+        or run the bridge locally.
       </div>
     </div>
   </div>
@@ -660,9 +663,17 @@ function syncDashUrlField() {
   if (el) el.value = state.dashUrl || '';
 }
 
+function normalizeDashUrl(raw) {
+  let url = (raw || '').trim();
+  if (!url) return '';
+  if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(url)) url = 'http://' + url;
+  return url;
+}
+
 function readDashUrlField() {
   const el = document.getElementById('dash-url');
-  state.dashUrl = (el?.value || '').trim();
+  state.dashUrl = normalizeDashUrl(el?.value || '');
+  if (el && el.value.trim() && el.value.trim() !== state.dashUrl) el.value = state.dashUrl;
 }
 
 function saveDashUrlFromField() {

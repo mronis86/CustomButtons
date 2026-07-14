@@ -48,12 +48,24 @@ function normalizeButton(btn) {
   return out;
 }
 
+function normalizeDashUrl(raw) {
+  if (typeof raw !== 'string') return '';
+  let url = raw.trim();
+  if (!url) return '';
+  // Users often paste host:port/path — make it absolute so the iframe
+  // does not resolve against the Railway origin (Cannot GET /192.168...)
+  if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(url)) {
+    url = `http://${url}`;
+  }
+  return url;
+}
+
 function normalizeState(state) {
   const buttons = Array.isArray(state?.buttons)
     ? state.buttons.map(normalizeButton)
     : [];
   const views = (state?.views && typeof state.views === 'object') ? state.views : {};
-  const dashUrl = typeof state?.dashUrl === 'string' ? state.dashUrl.trim() : '';
+  const dashUrl = normalizeDashUrl(state?.dashUrl);
   return { buttons, views, dashUrl };
 }
 
