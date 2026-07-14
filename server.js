@@ -234,7 +234,8 @@ app.get('/poll', checkSecret, (req, res) => {
   while (triggerQueue.length && now - triggerQueue[0].ts > 10000) {
     triggerQueue.shift();
   }
-  if (triggerQueue.length === 0) return res.status(204).end();
+  // Prefer JSON idle response — empty 204 bodies break some HTTP clients' JSON parsers
+  if (triggerQueue.length === 0) return res.json({ waiting: true });
   const item = triggerQueue.shift();
   console.log(`[poll] dispatching P${item.page}/R${item.row}/C${item.col}`);
   res.json({ page: item.page, row: item.row, col: item.col });

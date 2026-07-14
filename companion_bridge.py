@@ -87,7 +87,7 @@ class Poller(threading.Thread):
     """
     Polls GET /poll from the Railway server.
     The server returns the next queued trigger as JSON { page, row, col }
-    or HTTP 204 / { waiting: true } if nothing is pending.
+    or { waiting: true } / empty / 204 if nothing is pending.
     """
     def __init__(self, cfg, log_queue, stop_event):
         super().__init__(daemon=True)
@@ -121,14 +121,35 @@ class Poller(threading.Thread):
 
         try:
             with urllib.request.urlopen(req, timeout=10) as resp:
-                data = json.loads(resp.read().decode())
+                # 204 No Content = queue empty (urllib does NOT raise for 204)
+                if getattr(resp, "status", None) == 204:
+                    return
+                raw = resp.read().decode("utf-8", errors="replace").strip()
         except urllib.error.HTTPError as e:
             if e.code == 204:
                 return  # nothing waiting
-            raise
+            body = ""
+            try:
+                body = e.read().decode("utf-8", errors="replace")[:200]
+            except Exception:
+                pass
+            self.log(f"Poll HTTP {e.code}: {body or e.reason}", "ERR")
+            time.sleep(2)
+            return
         except urllib.error.URLError as e:
             self.log(f"Cannot reach Railway: {e.reason}", "ERR")
             time.sleep(5)
+            return
+
+        # Empty body also means nothing waiting
+        if not raw:
+            return
+
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            self.log(f"Poll non-JSON response: {raw[:160]!r}", "ERR")
+            time.sleep(2)
             return
 
         if data.get("waiting"):
