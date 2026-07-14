@@ -30,7 +30,11 @@ Compatible with **Bitfocus Companion 3.5.5** (location-based OSC).
 | `dashboard.html`         | Buttons on top + Ross DashBoard embed — `/dashboard` |
 | `admin.html`             | Admin — configure buttons and views                  |
 | `companion_bridge.py`    | Local Python GUI — polls Railway, fires OSC          |
+| `bridge/run_bridge.bat`  | Windows launcher for the Python bridge               |
 | `requirements.txt`       | No pip installs needed (pure stdlib)                 |
+
+Download the Windows pack from Admin (**⬇ BRIDGE ZIP**) or  
+`GET /download/companion-bridge.zip` — includes `companion_bridge.py`, `run_bridge.bat`, and a short README.
 
 ---
 

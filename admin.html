@@ -380,6 +380,7 @@
   </div>
 
   <div class="topbar-spacer"></div>
+  <a class="tb-btn" id="btn-download-bridge" href="/download/companion-bridge.zip" title="Download Python bridge + run_bridge.bat">⬇ BRIDGE ZIP</a>
   <button class="tb-btn primary" id="btn-push">⬆ PUSH TO SURFACE</button>
 </div>
 
@@ -408,6 +409,7 @@
         <br>If Admin is on Railway (https), a local http embed may be blocked by the browser — open
         <a href="/dashboard" target="_blank" rel="noopener">/dashboard</a> from a machine on the same LAN,
         or run the bridge locally.
+        <br>Need the local Python bridge? Use <strong>⬇ BRIDGE ZIP</strong> in the top bar — unzip and double-click <code>run_bridge.bat</code>.
       </div>
     </div>
   </div>
@@ -566,6 +568,16 @@ document.getElementById('api-secret').addEventListener('change', e => {
 
 document.getElementById('btn-connect').addEventListener('click', connect);
 document.getElementById('btn-push').addEventListener('click', () => pushToServer(true));
+document.getElementById('btn-download-bridge').addEventListener('click', (e) => {
+  const base = (serverUrl || (isRemote ? window.location.origin : '')).replace(/\/$/, '');
+  if (!base) {
+    e.preventDefault();
+    toast('Set SERVER URL / CONNECT first', 'warn');
+    return;
+  }
+  e.preventDefault();
+  window.location.href = base + '/download/companion-bridge.zip';
+});
 document.getElementById('btn-new').addEventListener('click', newButton);
 document.getElementById('btn-add-view').addEventListener('click', addView);
 document.getElementById('new-view-name').addEventListener('keydown', e => { if (e.key === 'Enter') addView(); });

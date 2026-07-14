@@ -1,9 +1,99 @@
 const express = require('express');
 const cors    = require('cors');
 const path    = require('path');
+const fs      = require('fs');
+const zlib    = require('zlib');
+const crc32   = require('zlib').crc32;
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
+
+// ── Minimal ZIP builder (no extra npm deps) ───────────────────────────────────
+function u16(n) {
+  const b = Buffer.alloc(2);
+  b.writeUInt16LE(n >>> 0, 0);
+  return b;
+}
+function u32(n) {
+  const b = Buffer.alloc(4);
+  b.writeUInt32LE(n >>> 0, 0);
+  return b;
+}
+function zipCrc32(buf) {
+  // Node zlib.crc32 available in Node 22+; fall back for older engines
+  if (typeof crc32 === 'function') return crc32(buf) >>> 0;
+  let c = ~0;
+  for (let i = 0; i < buf.length; i++) {
+    c ^= buf[i];
+    for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
+  }
+  return (~c) >>> 0;
+}
+function buildZip(files) {
+  const locals = [];
+  const centrals = [];
+  let offset = 0;
+
+  for (const file of files) {
+    const name = Buffer.from(file.name, 'utf8');
+    const data = Buffer.isBuffer(file.data) ? file.data : Buffer.from(file.data);
+    const compressed = zlib.deflateRawSync(data);
+    const crc = zipCrc32(data);
+
+    const local = Buffer.concat([
+      u32(0x04034b50),
+      u16(20), u16(0), u16(8),
+      u16(0), u16(0),
+      u32(crc),
+      u32(compressed.length),
+      u32(data.length),
+      u16(name.length), u16(0),
+      name,
+      compressed,
+    ]);
+
+    const central = Buffer.concat([
+      u32(0x02014b50),
+      u16(20), u16(20), u16(0), u16(8),
+      u16(0), u16(0),
+      u32(crc),
+      u32(compressed.length),
+      u32(data.length),
+      u16(name.length), u16(0), u16(0),
+      u16(0), u16(0),
+      u32(0),
+      u32(offset),
+      name,
+    ]);
+
+    locals.push(local);
+    centrals.push(central);
+    offset += local.length;
+  }
+
+  const centralDir = Buffer.concat(centrals);
+  const end = Buffer.concat([
+    u32(0x06054b50),
+    u16(0), u16(0),
+    u16(files.length), u16(files.length),
+    u32(centralDir.length),
+    u32(offset),
+    u16(0),
+  ]);
+
+  return Buffer.concat([...locals, centralDir, end]);
+}
+
+function buildBridgeZip() {
+  const bridgePy = fs.readFileSync(path.join(__dirname, 'companion_bridge.py'));
+  const runBat   = fs.readFileSync(path.join(__dirname, 'bridge', 'run_bridge.bat'));
+  const readme   = fs.readFileSync(path.join(__dirname, 'bridge', 'README.txt'));
+  return buildZip([
+    { name: 'companion-bridge/companion_bridge.py', data: bridgePy },
+    { name: 'companion-bridge/run_bridge.bat', data: runBat },
+    { name: 'companion-bridge/README.txt', data: readme },
+  ]);
+}
 
 const API_SECRET = process.env.API_SECRET || null;
 
@@ -150,6 +240,23 @@ app.get('/poll', checkSecret, (req, res) => {
   res.json({ page: item.page, row: item.row, col: item.col });
 });
 
+// Downloadable Windows bridge pack (Python + .bat)
+app.get('/download/companion-bridge.zip', (req, res) => {
+  try {
+    const zip = buildBridgeZip();
+    res.set({
+      'Content-Type': 'application/zip',
+      'Content-Disposition': 'attachment; filename="companion-bridge.zip"',
+      'Content-Length': String(zip.length),
+      'Cache-Control': 'no-store',
+    });
+    res.send(zip);
+  } catch (e) {
+    console.error('[download] bridge zip failed:', e);
+    res.status(500).json({ error: 'Could not build bridge zip' });
+  }
+});
+
 // ── STATIC + HTML (after API routes) ─────────────────────────────────────────
 app.get('/', (req, res) => {
   res.set('Cache-Control', 'no-store');
@@ -176,6 +283,7 @@ app.listen(PORT, () => {
   console.log(`Companion Bridge running on port ${PORT}`);
   console.log(`  GET  /            → surface.html`);
   console.log(`  GET  /dashboard   → Companion buttons + Ross DashBoard`);
+  console.log(`  GET  /download/companion-bridge.zip → Windows bridge pack`);
   console.log(`  GET  /state       → button layout`);
   console.log(`  PUT  /state       → save layout (secret required)`);
   console.log(`  POST /trigger     → queue a button press (page/row/col)`);
