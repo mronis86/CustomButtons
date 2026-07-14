@@ -2,9 +2,12 @@
 """
 Companion Bridge — Local OSC relay
 Polls a Railway server for pending trigger commands,
-fires OSC /press/bank/{page}/{bank} to Bitfocus Companion.
+fires OSC /location/{page}/{row}/{col}/press to Bitfocus Companion 3.x+.
 
-Requirements:  pip install python-osc requests
+Compatible with Companion 3.5.5 location-based OSC API.
+Legacy /press/bank/... is intentionally not used.
+
+Requirements: pure Python stdlib (no pip installs needed).
 """
 
 import json
@@ -82,9 +85,9 @@ def save_config(cfg):
 
 class Poller(threading.Thread):
     """
-    Long-polls GET /poll from the Railway server.
-    The server returns the next queued trigger as JSON { page, bank }
-    or { waiting: true } if nothing is pending.
+    Polls GET /poll from the Railway server.
+    The server returns the next queued trigger as JSON { page, row, col }
+    or HTTP 204 / { waiting: true } if nothing is pending.
     """
     def __init__(self, cfg, log_queue, stop_event):
         super().__init__(daemon=True)
@@ -97,7 +100,7 @@ class Poller(threading.Thread):
         self.log_queue.put(f"[{ts}] [{level}] {msg}")
 
     def run(self):
-        self.log("Poller started")
+        self.log("Poller started (Companion 3.x /location OSC)")
         while not self.stop_event.is_set():
             try:
                 self._poll_once()
@@ -131,15 +134,26 @@ class Poller(threading.Thread):
         if data.get("waiting"):
             return
 
-        page = data.get("page")
-        bank = data.get("bank")
-        if page and bank:
-            self._fire_osc(page, bank)
+        # row/col may be 0 — do not use truthiness checks
+        if "page" not in data or "row" not in data or "col" not in data:
+            self.log(f"Bad trigger payload (need page/row/col): {data}", "WARN")
+            return
 
-    def _fire_osc(self, page, bank):
+        try:
+            page = int(data["page"])
+            row  = int(data["row"])
+            col  = int(data["col"])
+        except (TypeError, ValueError):
+            self.log(f"Non-numeric page/row/col: {data}", "WARN")
+            return
+
+        self._fire_osc(page, row, col)
+
+    def _fire_osc(self, page, row, col):
         host    = self.cfg["companion_host"]
         port    = self.cfg["companion_port"]
-        address = f"/press/bank/{page}/{bank}"
+        # Companion 3.x+: /location/{page}/{row}/{column}/press
+        address = f"/location/{page}/{row}/{col}/press"
         try:
             send_osc(host, port, address)
             self.log(f"OSC  {address}  →  {host}:{port}", "OSC")
@@ -336,10 +350,11 @@ class App(tk.Tk):
             self.cfg[key] = entry.get().strip()
         host = self.cfg.get("companion_host", "127.0.0.1")
         port = self.cfg.get("companion_port", "12321")
-        # Test with page 1, bank 1
+        # Companion 3.5.5: page 1, row 0, column 0
+        address = "/location/1/0/0/press"
         try:
-            send_osc(host, int(port), "/press/bank/1/1")
-            self._log(f"TEST OSC  /press/bank/1/1  →  {host}:{port}", "OK")
+            send_osc(host, int(port), address)
+            self._log(f"TEST OSC  {address}  →  {host}:{port}", "OK")
         except Exception as e:
             self._log(f"TEST OSC failed: {e}", "ERR")
 

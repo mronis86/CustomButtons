@@ -18,11 +18,50 @@ function checkSecret(req, res, next) {
   next();
 }
 
+// ── Button location helpers (Companion 3.x page/row/col) ───────────────────────
+// Legacy Companion 2.x used 1-based "bank" on an 8-wide grid.
+// Convert bank → row/col when loading or saving old button configs.
+function bankToRowCol(bank, cols = 8) {
+  const i = Number(bank) - 1;
+  if (!Number.isFinite(i) || i < 0) return { row: 0, col: 0 };
+  return { row: Math.floor(i / cols), col: i % cols };
+}
+
+function normalizeButton(btn) {
+  if (!btn || typeof btn !== 'object') return btn;
+  const out = { ...btn };
+  out.page = Number(out.page);
+  if (!Number.isFinite(out.page) || out.page < 1) out.page = 1;
+
+  if (out.row === undefined && out.col === undefined && out.bank !== undefined) {
+    const loc = bankToRowCol(out.bank);
+    out.row = loc.row;
+    out.col = loc.col;
+  }
+
+  out.row = Number(out.row);
+  out.col = Number(out.col);
+  if (!Number.isFinite(out.row)) out.row = 0;
+  if (!Number.isFinite(out.col)) out.col = 0;
+
+  delete out.bank;
+  return out;
+}
+
+function normalizeState(state) {
+  const buttons = Array.isArray(state?.buttons)
+    ? state.buttons.map(normalizeButton)
+    : [];
+  const views = (state?.views && typeof state.views === 'object') ? state.views : {};
+  const dashUrl = typeof state?.dashUrl === 'string' ? state.dashUrl.trim() : '';
+  return { buttons, views, dashUrl };
+}
+
 // ── Trigger queue ─────────────────────────────────────────────────────────────
 const triggerQueue = [];
 
 // ── In-memory state ───────────────────────────────────────────────────────────
-let appState = {
+let appState = normalizeState({
   buttons: [
     { id: 'b1', label: 'CAM 1',  page: 1, row: 0, col: 0, color: '#e63946' },
     { id: 'b2', label: 'CAM 2',  page: 1, row: 0, col: 1, color: '#457b9d' },
@@ -36,7 +75,8 @@ let appState = {
     'v2': { name: 'GRAPHICS', buttonIds: ['b4', 'b5'] },
     'v3': { name: 'ALL',      buttonIds: ['b1','b2','b3','b4','b5','b6'] },
   },
-};
+  dashUrl: '',
+});
 
 // ── API ROUTES (must come before static middleware) ───────────────────────────
 
@@ -46,6 +86,7 @@ app.get('/health', (req, res) => res.json({
   status: 'ok',
   queued: triggerQueue.length,
   mode: 'osc-relay',
+  osc: 'location', // Companion 3.x /location/{page}/{row}/{col}/press
 }));
 
 app.get('/state', (req, res) => {
@@ -54,20 +95,33 @@ app.get('/state', (req, res) => {
 });
 
 app.put('/state', checkSecret, (req, res) => {
-  const { buttons, views } = req.body;
+  const { buttons, views, dashUrl } = req.body;
   if (!Array.isArray(buttons) || typeof views !== 'object') {
-    return res.status(400).json({ error: 'Expected { buttons: [], views: {} }' });
+    return res.status(400).json({ error: 'Expected { buttons: [], views: {}, dashUrl?: string }' });
   }
-  appState = { buttons, views };
-  console.log(`[state] PUT — ${buttons.length} buttons, ${Object.keys(views).length} views`);
+  appState = normalizeState({ buttons, views, dashUrl });
+  console.log(`[state] PUT — ${appState.buttons.length} buttons, ${Object.keys(appState.views).length} views, dashUrl=${appState.dashUrl ? 'set' : 'empty'}`);
   res.json({ ok: true });
 });
 
 app.post('/trigger', (req, res) => {
-  const { page, row, col } = req.body;
-  if (page === undefined || row === undefined || col === undefined) {
-    return res.status(400).json({ error: 'page, row and col required' });
+  let { page, row, col } = req.body;
+
+  // Accept legacy { page, bank } payloads and convert
+  if ((row === undefined || col === undefined) && req.body.bank !== undefined) {
+    const loc = bankToRowCol(req.body.bank);
+    row = loc.row;
+    col = loc.col;
   }
+
+  page = Number(page);
+  row  = Number(row);
+  col  = Number(col);
+
+  if (!Number.isFinite(page) || !Number.isFinite(row) || !Number.isFinite(col)) {
+    return res.status(400).json({ error: 'page, row and col required (Companion location)' });
+  }
+
   triggerQueue.push({ page, row, col, ts: Date.now() });
   console.log(`[queue] P${page}/R${row}/C${col}  (depth: ${triggerQueue.length})`);
   res.json({ ok: true, queued: triggerQueue.length });
@@ -95,12 +149,23 @@ app.get('/admin.html', (req, res) => {
   res.sendFile(path.join(__dirname, 'admin.html'));
 });
 
+app.get('/dashboard.html', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(__dirname, 'dashboard.html'));
+});
+
+app.get('/dashboard', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(__dirname, 'dashboard.html'));
+});
+
 // ── START ─────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`Companion Bridge running on port ${PORT}`);
-  console.log(`  GET  /        → surface.html`);
-  console.log(`  GET  /state   → button layout`);
-  console.log(`  PUT  /state   → save layout (secret required)`);
-  console.log(`  POST /trigger → queue a button press`);
-  console.log(`  GET  /poll    → dequeue for OSC relay (secret required)`);
+  console.log(`  GET  /            → surface.html`);
+  console.log(`  GET  /dashboard   → Companion buttons + Ross DashBoard`);
+  console.log(`  GET  /state       → button layout`);
+  console.log(`  PUT  /state       → save layout (secret required)`);
+  console.log(`  POST /trigger     → queue a button press (page/row/col)`);
+  console.log(`  GET  /poll        → dequeue for OSC /location/.../press`);
 });

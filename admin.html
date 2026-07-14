@@ -92,6 +92,21 @@
   .tb-btn.primary:hover { background: #33ddff; }
   .tb-btn.danger  { border-color: var(--danger); color: var(--danger); }
 
+  .dash-config {
+    background: var(--s2); border: 1px solid var(--border);
+    padding: 16px 18px; display: flex; flex-direction: column; gap: 12px;
+  }
+  .dash-config-row {
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  }
+  .dash-config-row .field { flex: 1; min-width: 240px; }
+  .dash-hint {
+    font-family: 'Share Tech Mono', monospace; font-size: 10px;
+    color: var(--muted); letter-spacing: 0.04em; line-height: 1.5;
+  }
+  .dash-hint a { color: var(--accent); text-decoration: none; }
+  .dash-hint a:hover { text-decoration: underline; }
+
   /* ── PAGE LAYOUT ── */
   .page { max-width: 1100px; margin: 0 auto; padding: 24px 20px; display: flex; flex-direction: column; gap: 28px; }
 
@@ -371,10 +386,33 @@
 <!-- PAGE -->
 <div class="page">
 
+  <!-- ── SECTION 0: ROSS DASHBOARD URL ── -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-label">// 0 — ROSS DASHBOARD &nbsp;·&nbsp; embed URL used by /dashboard</div>
+      <div class="section-actions">
+        <a class="tb-btn" href="/dashboard" target="_blank" rel="noopener">OPEN DASHBOARD PAGE</a>
+      </div>
+    </div>
+    <div class="dash-config">
+      <div class="dash-config-row">
+        <div class="field-group" style="flex:1;min-width:240px;">
+          <div class="field-lbl">DashBoard Embed URL</div>
+          <input class="field" type="url" id="dash-url" placeholder="http://dashboard-host:port/... (leave blank until you have one)" autocomplete="off" spellcheck="false">
+        </div>
+        <button class="tb-btn primary" id="btn-save-dash" style="margin-top:16px;">SAVE URL</button>
+      </div>
+      <div class="dash-hint">
+        Temporary or permanent URL is fine — change it anytime and push.
+        The <a href="/dashboard" target="_blank" rel="noopener">/dashboard</a> page reads this from the server.
+      </div>
+    </div>
+  </div>
+
   <!-- ── SECTION 1: BUTTONS ── -->
   <div class="section">
     <div class="section-head">
-      <div class="section-label">// 1 — BUTTONS &nbsp;·&nbsp; create your buttons here</div>
+      <div class="section-label">// 1 — BUTTONS &nbsp;·&nbsp; Companion location = page / row / column (0-based)</div>
       <div class="section-actions">
         <button class="tb-btn" id="btn-new">+ NEW BUTTON</button>
       </div>
@@ -396,15 +434,15 @@
           <div class="field-row3">
             <div class="field-group">
               <div class="field-lbl">Page</div>
-              <input class="field" type="number" id="edit-page" min="1" max="99" placeholder="1">
+              <input class="field" type="number" id="edit-page" min="1" max="99" placeholder="1" title="Companion page number">
             </div>
             <div class="field-group">
               <div class="field-lbl">Row</div>
-              <input class="field" type="number" id="edit-row" min="0" max="7" placeholder="0">
+              <input class="field" type="number" id="edit-row" min="-32" max="31" placeholder="0" title="Companion grid row (0-based)">
             </div>
             <div class="field-group">
               <div class="field-lbl">Column</div>
-              <input class="field" type="number" id="edit-col" min="0" max="7" placeholder="0">
+              <input class="field" type="number" id="edit-col" min="-32" max="31" placeholder="0" title="Companion grid column (0-based)">
             </div>
           </div>
         </div>
@@ -491,13 +529,13 @@ let pushTimer      = null; // debounce auto-push
 function uid() { return Math.random().toString(36).slice(2, 9); }
 
 function defaultState() {
-  return { buttons: [], views: {} };
+  return { buttons: [], views: {}, dashUrl: '' };
 }
 
 function loadLocal() {
   try {
     const s = localStorage.getItem('cb_admin_state');
-    return s ? JSON.parse(s) : defaultState();
+    return s ? normalizeState(JSON.parse(s)) : defaultState();
   } catch { return defaultState(); }
 }
 
@@ -530,6 +568,20 @@ document.getElementById('btn-add-view').addEventListener('click', addView);
 document.getElementById('new-view-name').addEventListener('keydown', e => { if (e.key === 'Enter') addView(); });
 document.getElementById('edit-apply').addEventListener('click', applyEdit);
 document.getElementById('edit-cancel').addEventListener('click', cancelEdit);
+document.getElementById('btn-save-dash').addEventListener('click', async () => {
+  readDashUrlField();
+  saveLocal();
+  await pushToServer(true);
+});
+document.getElementById('dash-url').addEventListener('change', saveDashUrlFromField);
+document.getElementById('dash-url').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    document.getElementById('btn-save-dash').click();
+  }
+});
+
+syncDashUrlField();
 
 // Build swatch picker
 const swatchWrap = document.getElementById('edit-swatches');
@@ -571,8 +623,9 @@ async function pullFromServer() {
     const r = await apiFetch('/state');
     const data = await r.json();
     if (data.buttons && data.views !== undefined) {
-      state = data;
+      state = normalizeState(data);
       saveLocal();
+      syncDashUrlField();
       render();
       toast('Loaded from server', 'inf');
     }
@@ -581,7 +634,45 @@ async function pullFromServer() {
   }
 }
 
+function normalizeState(data) {
+  const buttons = (data.buttons || []).map(btn => {
+    const out = { ...btn };
+    if (out.row === undefined && out.col === undefined && out.bank !== undefined) {
+      const i = Number(out.bank) - 1;
+      out.row = Number.isFinite(i) && i >= 0 ? Math.floor(i / 8) : 0;
+      out.col = Number.isFinite(i) && i >= 0 ? i % 8 : 0;
+    }
+    out.page = Number(out.page) || 1;
+    out.row  = Number.isFinite(Number(out.row)) ? Number(out.row) : 0;
+    out.col  = Number.isFinite(Number(out.col)) ? Number(out.col) : 0;
+    delete out.bank;
+    return out;
+  });
+  return {
+    buttons,
+    views: data.views || {},
+    dashUrl: typeof data.dashUrl === 'string' ? data.dashUrl.trim() : '',
+  };
+}
+
+function syncDashUrlField() {
+  const el = document.getElementById('dash-url');
+  if (el) el.value = state.dashUrl || '';
+}
+
+function readDashUrlField() {
+  const el = document.getElementById('dash-url');
+  state.dashUrl = (el?.value || '').trim();
+}
+
+function saveDashUrlFromField() {
+  readDashUrlField();
+  saveLocal();
+  schedulePush();
+}
+
 async function pushToServer(manual = false) {
+  readDashUrlField();
   saveLocal();
   if (!serverUrl) {
     if (manual) toast('No server configured', 'warn');
@@ -809,7 +900,7 @@ function renderAssignGrid() {
     tile.className = 'assign-tile' + (assigned ? ' assigned' : '');
     tile.style.setProperty('--tile-color', btn.color);
     tile.innerHTML = `<div class="assign-tile-label">${esc(btn.label)}</div>
-                      <div class="assign-tile-meta">P${btn.page} B${btn.bank}</div>`;
+                      <div class="assign-tile-meta">P${btn.page} R${btn.row ?? 0} C${btn.col ?? 0}</div>`;
     tile.addEventListener('click', () => toggleAssign(btn.id));
     grid.appendChild(tile);
   });

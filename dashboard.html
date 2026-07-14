@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>COMPANION + DASHBOARD</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700;900&display=swap');
+
+  :root {
+    --bg:      #080a0c;
+    --s1:      #0f1115;
+    --s2:      #161920;
+    --border:  #252a35;
+    --text:    #bdc4d4;
+    --muted:   #4e5668;
+    --accent:  #00d4ff;
+    --danger:  #ff3b3b;
+    --success: #00e676;
+    --ross:    #e85d04;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── FIRST-RUN SETUP ── */
+  #setup {
+    position: fixed; inset: 0; background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 800; flex-direction: column;
+  }
+  #setup.hidden { display: none; }
+
+  .setup-box {
+    background: var(--s1); border: 1px solid var(--border);
+    width: min(440px, 92vw); padding: 32px;
+    display: flex; flex-direction: column; gap: 18px;
+  }
+  .setup-title { font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 0.2em; color: var(--accent); }
+  .setup-desc  { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--muted); line-height: 1.7; letter-spacing: 0.04em; }
+  .setup-field { display: flex; flex-direction: column; gap: 7px; }
+  .setup-field label { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 0.15em; color: var(--muted); text-transform: uppercase; }
+  .setup-field input {
+    background: var(--s2); border: 1px solid var(--border); color: var(--text);
+    font-family: 'Share Tech Mono', monospace; font-size: 13px;
+    padding: 10px 12px; outline: none; width: 100%; transition: border-color 0.15s;
+  }
+  .setup-field input:focus { border-color: var(--accent); }
+  .setup-btn {
+    padding: 12px; background: var(--accent); border: none; color: #000;
+    font-family: 'Barlow Condensed', sans-serif; font-size: 15px; font-weight: 900;
+    letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; width: 100%;
+  }
+  .setup-btn:hover { background: #33ddff; }
+  .setup-note { font-family: 'Share Tech Mono', monospace; font-size: 9px; color: var(--muted); text-align: center; line-height: 1.5; }
+
+  /* ── TOPBAR ── */
+  .topbar {
+    height: 46px; background: var(--s1); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 16px; gap: 12px;
+    flex-shrink: 0; z-index: 100;
+  }
+  .logo { font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 0.2em; color: var(--accent); flex-shrink: 0; }
+  .logo span { color: var(--ross); }
+  .divider { width: 1px; height: 22px; background: var(--border); flex-shrink: 0; }
+  .view-tabs { display: flex; gap: 4px; flex: 1; overflow-x: auto; scrollbar-width: none; }
+  .view-tabs::-webkit-scrollbar { display: none; }
+  .view-tab {
+    height: 28px; padding: 0 14px; background: transparent;
+    border: 1px solid var(--border); color: var(--muted);
+    font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer;
+    transition: all 0.12s; white-space: nowrap; flex-shrink: 0;
+  }
+  .view-tab:hover { color: var(--text); }
+  .view-tab.active { background: var(--accent); border-color: var(--accent); color: #000; }
+  .topbar-right { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-shrink: 0; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); transition: all 0.3s; }
+  .status-dot.ok      { background: var(--success); box-shadow: 0 0 5px var(--success); }
+  .status-dot.err     { background: var(--danger);  box-shadow: 0 0 5px var(--danger); }
+  .status-dot.loading { background: var(--accent); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.2} }
+  .gear-btn { background: none; border: none; color: var(--muted); font-size: 14px; cursor: pointer; padding: 2px 4px; line-height: 1; transition: color 0.1s; }
+  .gear-btn:hover { color: var(--accent); }
+  .link-btn {
+    height: 26px; padding: 0 10px; background: transparent; border: 1px solid var(--border);
+    color: var(--muted); font-family: 'Share Tech Mono', monospace; font-size: 10px;
+    letter-spacing: 0.1em; cursor: pointer; text-decoration: none; display: flex; align-items: center;
+  }
+  .link-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── BUTTON STRIP (above dashboard) ── */
+  .btn-strip {
+    flex-shrink: 0;
+    background: var(--s1);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 14px;
+    min-height: 112px;
+    position: relative;
+  }
+  .btn-strip-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px; letter-spacing: 0.18em; color: var(--muted);
+    text-transform: uppercase; margin-bottom: 10px;
+  }
+  .button-row {
+    display: flex; gap: 8px; overflow-x: auto;
+    scrollbar-width: thin; padding-bottom: 2px;
+  }
+  .button-row::-webkit-scrollbar { height: 4px; }
+  .button-row::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .trig-btn {
+    width: 108px; height: 72px; flex-shrink: 0;
+    background: var(--s2); border: 1px solid var(--border);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    cursor: pointer; position: relative; overflow: hidden;
+    transition: transform 0.08s, box-shadow 0.1s;
+    -webkit-tap-highlight-color: transparent; user-select: none;
+  }
+  .trig-btn::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--btn-color, var(--accent));
+  }
+  .trig-btn::after {
+    content: ''; position: absolute; inset: 0;
+    background: var(--btn-color, var(--accent)); opacity: 0; pointer-events: none;
+  }
+  .trig-btn.pressing::after { opacity: 0.2; }
+  .trig-btn.pressing { transform: scale(0.95); }
+  .trig-btn:hover { box-shadow: 0 0 0 1px var(--btn-color, var(--accent)); }
+  .trig-label {
+    font-size: 14px; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: #fff; text-align: center;
+    padding: 0 6px; line-height: 1.1; pointer-events: none;
+  }
+  .trig-meta {
+    font-family: 'Share Tech Mono', monospace; font-size: 9px;
+    color: var(--muted); pointer-events: none;
+  }
+  @keyframes flash-ok  { 0% { box-shadow: 0 0 0 2px var(--success), 0 0 14px var(--success); } 100% { box-shadow: none; } }
+  @keyframes flash-err { 0% { box-shadow: 0 0 0 2px var(--danger),  0 0 14px var(--danger);  } 100% { box-shadow: none; } }
+  .trig-btn.success-flash { animation: flash-ok  0.4s ease-out; }
+  .trig-btn.error-flash   { animation: flash-err 0.4s ease-out; }
+
+  .strip-empty {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Share Tech Mono', monospace; font-size: 10px;
+    letter-spacing: 0.18em; color: var(--muted); text-transform: uppercase;
+    pointer-events: none;
+  }
+  .strip-empty.hidden { display: none; }
+
+  /* ── DASHBOARD PANEL ── */
+  .dash-area {
+    flex: 1; min-height: 0;
+    display: flex; flex-direction: column;
+    background: #000;
+    position: relative;
+  }
+  .dash-bar {
+    height: 28px; flex-shrink: 0;
+    background: var(--s2); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 12px; gap: 10px;
+  }
+  .dash-bar-title {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px; letter-spacing: 0.16em; color: var(--ross);
+    text-transform: uppercase;
+  }
+  .dash-bar-url {
+    flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-family: 'Share Tech Mono', monospace; font-size: 9px; color: var(--muted);
+  }
+  .dash-reload {
+    background: none; border: 1px solid var(--border); color: var(--muted);
+    font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 0.1em;
+    padding: 2px 8px; cursor: pointer;
+  }
+  .dash-reload:hover { border-color: var(--ross); color: var(--ross); }
+
+  #dash-frame {
+    flex: 1; width: 100%; border: 0; background: #111;
+  }
+
+  .dash-placeholder {
+    position: absolute; inset: 28px 0 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+    background: var(--bg);
+  }
+  .dash-placeholder.hidden { display: none; }
+  .dash-placeholder .icon { font-size: 28px; opacity: 0.25; }
+  .dash-placeholder .msg {
+    font-family: 'Share Tech Mono', monospace; font-size: 11px;
+    letter-spacing: 0.16em; color: var(--muted); text-transform: uppercase; text-align: center;
+    line-height: 1.7; max-width: 420px; padding: 0 20px;
+  }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed; bottom: 16px; right: 16px;
+    background: var(--s2); border: 1px solid var(--border);
+    font-family: 'Share Tech Mono', monospace; font-size: 11px;
+    letter-spacing: 0.08em; padding: 9px 14px; z-index: 9999;
+    opacity: 0; transform: translateY(6px);
+    transition: opacity 0.18s, transform 0.18s; pointer-events: none;
+  }
+  #toast.show { opacity: 1; transform: translateY(0); }
+  #toast.ok  { border-color: var(--success); color: var(--success); }
+  #toast.err { border-color: var(--danger);  color: var(--danger);  }
+  #toast.inf { border-color: var(--accent);  color: var(--accent);  }
+
+  @media (max-width: 700px) {
+    .trig-btn { width: 92px; height: 64px; }
+    .trig-label { font-size: 12px; }
+    .link-btn { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- FIRST-RUN / SETTINGS -->
+<div id="setup">
+  <div class="setup-box">
+    <div class="setup-title">// COMPANION + ROSS DASHBOARD</div>
+    <div class="setup-desc">Connect to the bridge server.<br>The DashBoard embed URL is set in Admin (section 0) — you can override it here if needed.</div>
+    <div class="setup-field">
+      <label>Railway / Bridge Server URL</label>
+      <input type="url" id="setup-server" placeholder="https://your-app.up.railway.app" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="setup-field">
+      <label>DashBoard URL override (optional)</label>
+      <input type="url" id="setup-dash" placeholder="Leave blank to use the Admin-saved URL" autocomplete="off" spellcheck="false">
+    </div>
+    <button class="setup-btn" id="setup-go">SAVE &amp; OPEN</button>
+    <div class="setup-note">Prefer setting the DashBoard URL in Admin so it stays in one place.<br>Tap ⚙ anytime to change the server connection.</div>
+  </div>
+</div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">COMPANION <span>+ DASH</span></div>
+  <div class="divider"></div>
+  <div class="view-tabs" id="view-tabs"></div>
+  <div class="topbar-right">
+    <a class="link-btn" href="/" title="Open full surface">SURFACE</a>
+    <div class="status-dot loading" id="status-dot"></div>
+    <button class="gear-btn" id="gear-btn" title="Settings">⚙</button>
+  </div>
+</div>
+
+<!-- VIEW BUTTONS -->
+<div class="btn-strip">
+  <div class="btn-strip-label" id="strip-label">// VIEW BUTTONS</div>
+  <div class="strip-empty" id="strip-empty">CONNECTING…</div>
+  <div class="button-row" id="button-row"></div>
+</div>
+
+<!-- DASHBOARD EMBED -->
+<div class="dash-area">
+  <div class="dash-bar">
+    <div class="dash-bar-title">Ross DashBoard</div>
+    <div class="dash-bar-url" id="dash-url-label">No URL set</div>
+    <button class="dash-reload" id="dash-reload" title="Reload embed">RELOAD</button>
+  </div>
+  <div class="dash-placeholder" id="dash-placeholder">
+    <div class="icon">▣</div>
+    <div class="msg">No DashBoard URL set<br>Tap ⚙ and paste your Ross DashBoard web/panel URL</div>
+  </div>
+  <iframe id="dash-frame" title="Ross DashBoard" allow="fullscreen" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"></iframe>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const isRemote = window.location.protocol.startsWith('http') &&
+                 window.location.hostname !== 'localhost' &&
+                 window.location.hostname !== '127.0.0.1';
+
+let SERVER = isRemote
+  ? window.location.origin
+  : (localStorage.getItem('cb_server_url') || '');
+
+// Optional local override — Admin-saved dashUrl from /state is preferred
+let DASH_OVERRIDE = localStorage.getItem('cb_dash_url') || '';
+let DASH_URL = DASH_OVERRIDE;
+
+let appState   = null;
+let activeView = localStorage.getItem('cb_view') || null;
+
+const setupEl     = document.getElementById('setup');
+const setupServer = document.getElementById('setup-server');
+const setupDash   = document.getElementById('setup-dash');
+const dashFrame   = document.getElementById('dash-frame');
+const dashPlace   = document.getElementById('dash-placeholder');
+const dashLabel   = document.getElementById('dash-url-label');
+
+function showSetup() {
+  setupServer.value = SERVER;
+  setupDash.value = DASH_OVERRIDE;
+  setupEl.classList.remove('hidden');
+}
+function hideSetup() { setupEl.classList.add('hidden'); }
+
+document.getElementById('setup-go').addEventListener('click', doSetup);
+setupServer.addEventListener('keydown', e => { if (e.key === 'Enter') doSetup(); });
+setupDash.addEventListener('keydown', e => { if (e.key === 'Enter') doSetup(); });
+document.getElementById('gear-btn').addEventListener('click', showSetup);
+document.getElementById('dash-reload').addEventListener('click', loadDashboard);
+
+function doSetup() {
+  const server = setupServer.value.trim().replace(/\/$/, '');
+  const dash   = setupDash.value.trim();
+  if (!server) { toast('Server URL required', 'err'); return; }
+  SERVER = server;
+  DASH_OVERRIDE = dash;
+  localStorage.setItem('cb_server_url', SERVER);
+  localStorage.setItem('cb_dash_url', DASH_OVERRIDE);
+  hideSetup();
+  init();
+}
+
+function resolveDashUrl() {
+  // Local override wins if set; otherwise use Admin/server value
+  if (DASH_OVERRIDE) return DASH_OVERRIDE;
+  return (appState && typeof appState.dashUrl === 'string') ? appState.dashUrl.trim() : '';
+}
+
+function loadDashboard() {
+  DASH_URL = resolveDashUrl();
+  if (!DASH_URL) {
+    dashFrame.removeAttribute('src');
+    dashLabel.textContent = 'No URL set — add one in Admin';
+    dashPlace.classList.remove('hidden');
+    document.querySelector('#dash-placeholder .msg').innerHTML =
+      'No DashBoard URL set<br>Open Admin → section 0 and paste a temporary or permanent URL';
+    return;
+  }
+  dashLabel.textContent = DASH_URL + (DASH_OVERRIDE ? ' (override)' : ' (from admin)');
+  dashPlace.classList.add('hidden');
+  const sep = DASH_URL.includes('?') ? '&' : '?';
+  dashFrame.src = DASH_URL + sep + '_cb=' + Date.now();
+}
+
+async function init() {
+  setDot('loading');
+  setStripEmpty('CONNECTING…');
+  try {
+    const r = await fetch(SERVER + '/state');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    appState = normalizeState(await r.json());
+    localStorage.setItem('cb_state_cache', JSON.stringify(appState));
+    setDot('ok');
+    renderTabs();
+    renderButtons();
+    loadDashboard();
+  } catch (e) {
+    setDot('err');
+    setStripEmpty('CANNOT REACH SERVER');
+    toast('Cannot connect — tap ⚙ to check server URL', 'err');
+    const cached = localStorage.getItem('cb_state_cache');
+    if (cached) {
+      appState = normalizeState(JSON.parse(cached));
+      renderTabs();
+      renderButtons();
+      loadDashboard();
+      toast('Showing cached layout', 'inf');
+    } else {
+      loadDashboard();
+    }
+  }
+}
+
+function normalizeState(data) {
+  const buttons = (data.buttons || []).map(btn => {
+    const out = { ...btn };
+    if (out.row === undefined && out.col === undefined && out.bank !== undefined) {
+      const i = Number(out.bank) - 1;
+      out.row = Number.isFinite(i) && i >= 0 ? Math.floor(i / 8) : 0;
+      out.col = Number.isFinite(i) && i >= 0 ? i % 8 : 0;
+    }
+    out.page = Number(out.page) || 1;
+    out.row  = Number.isFinite(Number(out.row)) ? Number(out.row) : 0;
+    out.col  = Number.isFinite(Number(out.col)) ? Number(out.col) : 0;
+    delete out.bank;
+    return out;
+  });
+  return {
+    buttons,
+    views: data.views || {},
+    dashUrl: typeof data.dashUrl === 'string' ? data.dashUrl.trim() : '',
+  };
+}
+
+function renderTabs() {
+  const tabs = document.getElementById('view-tabs');
+  tabs.innerHTML = '';
+  if (!appState?.views) return;
+  const entries = Object.entries(appState.views);
+  if (!activeView || !appState.views[activeView]) activeView = entries[0]?.[0] || null;
+  entries.forEach(([id, view]) => {
+    const tab = document.createElement('button');
+    tab.className = 'view-tab' + (id === activeView ? ' active' : '');
+    tab.textContent = view.name;
+    tab.addEventListener('click', () => {
+      activeView = id;
+      localStorage.setItem('cb_view', id);
+      renderTabs();
+      renderButtons();
+    });
+    tabs.appendChild(tab);
+  });
+}
+
+function renderButtons() {
+  const row = document.getElementById('button-row');
+  row.innerHTML = '';
+  if (!appState || !activeView || !appState.views[activeView]) {
+    setStripEmpty('NO VIEW SELECTED');
+    document.getElementById('strip-label').textContent = '// VIEW BUTTONS';
+    return;
+  }
+  const view = appState.views[activeView];
+  document.getElementById('strip-label').textContent = `// ${view.name} — COMPANION TRIGGERS`;
+  const ids  = view.buttonIds || [];
+  const btns = ids.map(id => appState.buttons.find(b => b.id === id)).filter(Boolean);
+  if (btns.length === 0) {
+    setStripEmpty('NO BUTTONS IN THIS VIEW');
+    return;
+  }
+  setStripEmpty(null);
+  btns.forEach(btn => {
+    const el = document.createElement('div');
+    el.className = 'trig-btn';
+    el.style.setProperty('--btn-color', btn.color);
+    el.innerHTML = `<div class="trig-label">${esc(btn.label)}</div>
+                    <div class="trig-meta">P${btn.page} R${btn.row ?? 0} C${btn.col ?? 0}</div>`;
+    const pressStart = () => el.classList.add('pressing');
+    const pressEnd   = () => el.classList.remove('pressing');
+    el.addEventListener('mousedown',  pressStart);
+    el.addEventListener('mouseup',    pressEnd);
+    el.addEventListener('mouseleave', pressEnd);
+    el.addEventListener('touchstart', pressStart, { passive: true });
+    el.addEventListener('touchend',   pressEnd);
+    el.addEventListener('click', () => fireTrigger(btn, el));
+    row.appendChild(el);
+  });
+}
+
+async function fireTrigger(btn, screenEl) {
+  if (screenEl) flash(screenEl, 'pressing');
+  try {
+    const r = await fetch(SERVER + '/trigger', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ page: btn.page, row: btn.row ?? 0, col: btn.col ?? 0 }),
+    });
+    const data = await r.json();
+    if (data.ok) {
+      if (screenEl) flash(screenEl, 'success-flash');
+    } else {
+      if (screenEl) flash(screenEl, 'error-flash');
+      toast('Error: ' + (data.error || 'unknown'), 'err');
+    }
+  } catch (e) {
+    if (screenEl) flash(screenEl, 'error-flash');
+    toast('Trigger failed — check bridge', 'err');
+  }
+}
+
+function flash(el, cls) {
+  el.classList.remove(cls);
+  void el.offsetWidth;
+  el.classList.add(cls);
+  setTimeout(() => el.classList.remove(cls), 420);
+}
+
+function setStripEmpty(msg) {
+  const el = document.getElementById('strip-empty');
+  if (!msg) { el.classList.add('hidden'); return; }
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+
+function setDot(cls) {
+  document.getElementById('status-dot').className = 'status-dot ' + cls;
+}
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+function toast(msg, kind) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show ' + (kind || 'inf');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { el.className = ''; }, 2400);
+}
+
+// Boot
+if (SERVER) {
+  hideSetup();
+  init();
+} else {
+  showSetup();
+}
+</script>
+</body>
+</html>
