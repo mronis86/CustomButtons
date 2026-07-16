@@ -502,9 +502,9 @@ class SatelliteFeedback(threading.Thread):
             )
             self.device_pages.add(page)
             self.log(
-                f"Satellite: ADD-DEVICE {device_id} — in Companion Surfaces, "
-                f"set this device to page {page}",
-                "WARN",
+                f"Satellite: registered surface '{device_id}' (shows as CB Feedback P{page}). "
+                f"Companion → Surfaces → set its page to {page} (only needed once).",
+                "INFO",
             )
 
     def run(self):
@@ -530,6 +530,7 @@ class SatelliteFeedback(threading.Thread):
                 self.device_pages.clear()
                 self.pending = []
                 greeted = False
+                fallback_warned = False
 
                 while not self.stop_event.is_set():
                     now = time.time()
@@ -551,12 +552,13 @@ class SatelliteFeedback(threading.Thread):
                             if use_subs:
                                 self._sync_subscriptions(locs)
                             else:
-                                if self.api_version and self.api_version < (1, 10, 0):
+                                if not fallback_warned:
                                     self.log(
-                                        "Satellite API < 1.10 (Companion 4.2.x): "
-                                        "using surface fallback — assign each CB Feedback surface to its page in Companion",
-                                        "WARN",
+                                        "Companion 4.2 detected — feedback uses CB Feedback surfaces "
+                                        "(this is normal). In Surfaces, set each CB Feedback P# to that page.",
+                                        "INFO",
                                     )
+                                    fallback_warned = True
                                 self._sync_surfaces(locs)
                         last_sync = now
 
