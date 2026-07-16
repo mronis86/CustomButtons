@@ -482,19 +482,38 @@ class SatelliteFeedback(threading.Thread):
         self.current_subids = desired
 
     def _sync_surfaces(self, locs):
-        """Companion 4.2 fallback: one virtual surface per page."""
-        pages = sorted({p for p, _, _ in locs})
-        # Determine grid size from locs
+        """Companion 4.2 fallback: one virtual surface per page (1..max)."""
+        used_pages = sorted({p for p, _, _ in locs})
+        if not used_pages:
+            return
+        # Fill gaps so P2 is registered whenever any higher/lower page exists
+        # and we always cover 1..max(page) from the button layout.
+        max_page = max(used_pages)
+        pages = list(range(1, max_page + 1))
+
         max_row = max((r for _, r, _ in locs), default=3)
         max_col = max((c for _, _, c in locs), default=7)
         keys_per_row = max(max_col + 1, 8)
         keys_total = keys_per_row * max(max_row + 1, 4)
 
+        if not getattr(self, "_logged_pages", False):
+            self.log(
+                f"Satellite: button layout uses pages {used_pages}; "
+                f"registering feedback surfaces for pages {pages}",
+                "INFO",
+            )
+            if max_page < 2:
+                self.log(
+                    "No page-2 buttons in Admin layout — CB Feedback P2 stays offline "
+                    "until you add at least one button with Page=2 and Push.",
+                    "WARN",
+                )
+            self._logged_pages = True
+
         for page in pages:
             if page in self.device_pages:
                 continue
             device_id = f"cbpage_{page}"
-            # Simple surface — user must set this surface's page in Companion UI once
             self._send_line(
                 f'ADD-DEVICE DEVICEID={device_id} PRODUCT_NAME="CB Feedback P{page}" '
                 f"KEYS_TOTAL={keys_total} KEYS_PER_ROW={keys_per_row} "
@@ -502,8 +521,8 @@ class SatelliteFeedback(threading.Thread):
             )
             self.device_pages.add(page)
             self.log(
-                f"Satellite: registered surface '{device_id}' (shows as CB Feedback P{page}). "
-                f"Companion → Surfaces → set its page to {page} (only needed once).",
+                f"Satellite: registered 'CB Feedback P{page}'. "
+                f"Companion → Surfaces → Home Page = {page}, turn OFF 'Use Last Page At Startup'.",
                 "INFO",
             )
 
@@ -531,6 +550,7 @@ class SatelliteFeedback(threading.Thread):
                 self.pending = []
                 greeted = False
                 fallback_warned = False
+                self._logged_pages = False
 
                 while not self.stop_event.is_set():
                     now = time.time()
