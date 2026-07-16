@@ -150,17 +150,77 @@ function normalizeDashUrl(raw) {
   return url;
 }
 
+function normalizeSecurity(sec) {
+  const s = (sec && typeof sec === 'object') ? sec : {};
+  const colors = Array.isArray(s.colors)
+    ? s.colors.map(c => String(c).toLowerCase()).filter(Boolean)
+    : ['red', 'green', 'blue'];
+  return {
+    enabled: s.enabled !== false, // on by default
+    pin: String(s.pin ?? '1615').trim() || '1615',
+    colors: colors.length ? colors : ['red', 'green', 'blue'],
+  };
+}
+
 function normalizeState(state) {
   const buttons = Array.isArray(state?.buttons)
     ? state.buttons.map(normalizeButton)
     : [];
   const views = (state?.views && typeof state.views === 'object') ? state.views : {};
   const dashUrl = normalizeDashUrl(state?.dashUrl);
-  return { buttons, views, dashUrl };
+  const security = normalizeSecurity(state?.security);
+  return { buttons, views, dashUrl, security };
+}
+
+function publicState() {
+  return {
+    buttons: appState.buttons,
+    views: appState.views,
+    dashUrl: appState.dashUrl,
+    security: { enabled: !!appState.security?.enabled },
+  };
 }
 
 // ── Trigger queue ─────────────────────────────────────────────────────────────
 const triggerQueue = [];
+
+// ── Companion Satellite feedback cache ────────────────────────────────────────
+// Keyed by "page/row/col"
+const buttonFeedback = new Map();
+function locKey(page, row, col) {
+  return `${page}/${row}/${col}`;
+}
+
+// Accept updates pushed by the local Python bridge.
+app.post('/feedback', checkSecret, (req, res) => {
+  const { page, row, col, pressed, color, text } = req.body || {};
+  const p = Number(page);
+  const r = Number(row);
+  const c = Number(col);
+  if (!Number.isFinite(p) || !Number.isFinite(r) || !Number.isFinite(c)) {
+    return res.status(400).json({ error: 'Expected numeric page/row/col' });
+  }
+  const key = locKey(p, r, c);
+  buttonFeedback.set(key, {
+    pressed: !!pressed,
+    color: typeof color === 'string' ? color : null,
+    text: typeof text === 'string' ? text : null,
+    updatedAt: Date.now(),
+  });
+  res.json({ ok: true });
+});
+
+// Let the browser poll the latest feedback for on-screen buttons.
+app.get('/feedback', (req, res) => {
+  const now = Date.now();
+  const out = {};
+  for (const [k, v] of buttonFeedback.entries()) {
+    // prune entries older than ~15s
+    if (now - v.updatedAt > 15000) continue;
+    out[k] = { pressed: v.pressed, color: v.color, text: v.text };
+  }
+  res.json({ ok: true, feedback: out, updatedAt: now });
+});
 
 // ── In-memory state ───────────────────────────────────────────────────────────
 let appState = normalizeState({
@@ -178,8 +238,23 @@ let appState = normalizeState({
     'v3': { name: 'ALL',      buttonIds: ['b1','b2','b3','b4','b5','b6'] },
   },
   dashUrl: '',
+  security: {
+    enabled: true,
+    pin: '1615',
+    colors: ['red', 'green', 'blue'],
+  },
 });
 
+// Simple unlock rate limit (per IP)
+const unlockAttempts = new Map();
+function unlockRateLimited(ip) {
+  const now = Date.now();
+  const row = unlockAttempts.get(ip) || { n: 0, t: now };
+  if (now - row.t > 60000) { row.n = 0; row.t = now; }
+  row.n += 1;
+  unlockAttempts.set(ip, row);
+  return row.n > 12;
+}
 // ── API ROUTES (must come before static middleware) ───────────────────────────
 
 app.get('/favicon.ico', (req, res) => res.status(204).end());
@@ -193,17 +268,54 @@ app.get('/health', (req, res) => res.json({
 
 app.get('/state', (req, res) => {
   console.log('[state] GET');
-  res.json(appState);
+  res.json(publicState());
+});
+
+// Full security config — secret required (for Admin)
+app.get('/security', checkSecret, (req, res) => {
+  res.json(appState.security || normalizeSecurity({}));
 });
 
 app.put('/state', checkSecret, (req, res) => {
-  const { buttons, views, dashUrl } = req.body;
+  const { buttons, views, dashUrl, security } = req.body;
   if (!Array.isArray(buttons) || typeof views !== 'object') {
-    return res.status(400).json({ error: 'Expected { buttons: [], views: {}, dashUrl?: string }' });
+    return res.status(400).json({ error: 'Expected { buttons: [], views: {}, dashUrl?: string, security?: {} }' });
   }
-  appState = normalizeState({ buttons, views, dashUrl });
-  console.log(`[state] PUT — ${appState.buttons.length} buttons, ${Object.keys(appState.views).length} views, dashUrl=${appState.dashUrl ? 'set' : 'empty'}`);
+  // Keep existing security if client omitted it (avoid wiping on partial push)
+  const next = { buttons, views, dashUrl };
+  next.security = security !== undefined ? security : appState.security;
+  appState = normalizeState(next);
+  console.log(`[state] PUT — ${appState.buttons.length} buttons, ${Object.keys(appState.views).length} views, security=${appState.security.enabled ? 'on' : 'off'}`);
   res.json({ ok: true });
+});
+
+app.post('/unlock', (req, res) => {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+  if (unlockRateLimited(ip)) {
+    return res.status(429).json({ error: 'Too many attempts — wait a minute' });
+  }
+
+  const sec = appState.security || normalizeSecurity({});
+  if (!sec.enabled) {
+    return res.json({ ok: true, unlocked: true, reason: 'disabled' });
+  }
+
+  const pin = String(req.body?.pin ?? '').trim();
+  const colors = Array.isArray(req.body?.colors)
+    ? req.body.colors.map(c => String(c).toLowerCase().trim())
+    : [];
+
+  const pinOk = pin === String(sec.pin);
+  const colorsOk = colors.length === sec.colors.length
+    && colors.every((c, i) => c === sec.colors[i]);
+
+  if (!pinOk || !colorsOk) {
+    console.log(`[unlock] FAIL from ${ip}`);
+    return res.status(401).json({ error: 'Incorrect code' });
+  }
+
+  console.log(`[unlock] OK from ${ip}`);
+  res.json({ ok: true, unlocked: true });
 });
 
 app.post('/trigger', (req, res) => {
@@ -277,6 +389,12 @@ app.get('/dashboard.html', (req, res) => {
 app.get('/dashboard', (req, res) => {
   res.set('Cache-Control', 'no-store');
   res.sendFile(path.join(__dirname, 'dashboard.html'));
+});
+
+app.get('/unlock.js', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.type('application/javascript');
+  res.sendFile(path.join(__dirname, 'unlock.js'));
 });
 
 // ── START ─────────────────────────────────────────────────────────────────────

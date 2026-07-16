@@ -281,6 +281,7 @@
 
 <div id="toast"></div>
 
+<script src="/unlock.js"></script>
 <script>
 const isRemote = window.location.protocol.startsWith('http') &&
                  window.location.hostname !== 'localhost' &&
@@ -296,6 +297,9 @@ let DASH_URL = DASH_OVERRIDE;
 
 let appState   = null;
 let activeView = localStorage.getItem('cb_view') || null;
+let feedbackTimer = null;
+// Map key: "page/row/col" -> { btnEl, labelEl }
+let feedbackEls = new Map();
 
 const setupEl     = document.getElementById('setup');
 const setupServer = document.getElementById('setup-server');
@@ -326,7 +330,18 @@ function doSetup() {
   localStorage.setItem('cb_server_url', SERVER);
   localStorage.setItem('cb_dash_url', DASH_OVERRIDE);
   hideSetup();
-  init();
+  startApp();
+}
+
+async function startApp() {
+  if (window.CBUnlock) {
+    await CBUnlock.require({
+      serverUrl: SERVER,
+      onUnlocked: () => init(),
+    });
+  } else {
+    init();
+  }
 }
 
 function normalizeDashUrl(raw) {
@@ -432,6 +447,7 @@ function renderTabs() {
 function renderButtons() {
   const row = document.getElementById('button-row');
   row.innerHTML = '';
+  feedbackEls.clear();
   if (!appState || !activeView || !appState.views[activeView]) {
     setStripEmpty('NO VIEW SELECTED');
     document.getElementById('strip-label').textContent = '// VIEW BUTTONS';
@@ -449,9 +465,13 @@ function renderButtons() {
   btns.forEach(btn => {
     const el = document.createElement('div');
     el.className = 'trig-btn';
+    const locKey = `${btn.page}/${btn.row ?? 0}/${btn.col ?? 0}`;
+    el.dataset.locKey = locKey;
     el.style.setProperty('--btn-color', btn.color);
     el.innerHTML = `<div class="trig-label">${esc(btn.label)}</div>
                     <div class="trig-meta">P${btn.page} R${btn.row ?? 0} C${btn.col ?? 0}</div>`;
+    const labelEl = el.querySelector('.trig-label');
+    feedbackEls.set(locKey, { btnEl: el, labelEl });
     const pressStart = () => el.classList.add('pressing');
     const pressEnd   = () => el.classList.remove('pressing');
     el.addEventListener('mousedown',  pressStart);
@@ -462,6 +482,42 @@ function renderButtons() {
     el.addEventListener('click', () => fireTrigger(btn, el));
     row.appendChild(el);
   });
+  ensureFeedbackLoop();
+}
+
+// Companion feedback polling (color/text/pressed) for on-screen buttons.
+function applyFeedback(feedbackMap) {
+  if (!feedbackMap) return;
+  for (const [locKey, st] of Object.entries(feedbackMap)) {
+    const hit = feedbackEls.get(locKey);
+    if (!hit) continue;
+    if (st.color) {
+      hit.btnEl.style.setProperty('--btn-color', st.color);
+      hit.btnEl.style.background = st.color;
+    }
+    if (typeof st.text === 'string' && st.text) {
+      hit.labelEl.textContent = st.text;
+    }
+    if ('pressed' in st) {
+      hit.btnEl.classList.toggle('pressing', !!st.pressed);
+    }
+  }
+}
+
+async function pollFeedback() {
+  if (!SERVER || feedbackEls.size === 0) return;
+  try {
+    const r = await fetch(SERVER + '/feedback', { cache: 'no-store' });
+    if (!r.ok) return;
+    const data = await r.json();
+    applyFeedback(data.feedback || {});
+  } catch (_) {}
+}
+
+function ensureFeedbackLoop() {
+  if (feedbackTimer) return;
+  if (feedbackEls.size === 0) return;
+  feedbackTimer = setInterval(pollFeedback, 900);
 }
 
 async function fireTrigger(btn, screenEl) {
@@ -520,7 +576,7 @@ function toast(msg, kind) {
 // Boot
 if (SERVER) {
   hideSetup();
-  init();
+  startApp();
 } else {
   showSetup();
 }

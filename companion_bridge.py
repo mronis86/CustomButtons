@@ -11,10 +11,13 @@ Requirements: pure Python stdlib (no pip installs needed).
 """
 
 import json
+import base64
 import os
 import queue
 import socket
+import select
 import struct
+import shlex
 import threading
 import time
 import tkinter as tk
@@ -83,6 +86,7 @@ DEFAULT_CONFIG = {
     "api_secret":     "",
     "companion_host": "127.0.0.1",
     "companion_port": "12321",
+    "companion_satellite_port": "16622",
     "poll_interval":  "1.0",
 }
 
@@ -208,6 +212,239 @@ class Poller(threading.Thread):
         except Exception as e:
             self.log(f"OSC failed: {e}", "ERR")
 
+# ─── Satellite feedback thread ─────────────────────────────────────────────
+
+class SatelliteFeedback(threading.Thread):
+    """
+    Subscribe to Companion's Satellite API button state and push updates to Railway.
+    We use this to drive UI feedback (color/text/pressed).
+    """
+
+    def __init__(self, cfg, log_queue, stop_event):
+        super().__init__(daemon=True)
+        self.cfg = cfg
+        self.log_queue = log_queue
+        self.stop_event = stop_event
+
+        self.subid_to_loc = {}  # SUBID -> (page,row,col)
+        self.current_subids = set()
+        self.last_sent = {}  # locKey -> (pressed,color,text)
+
+        self.sock = None
+
+    def log(self, msg, level="INFO"):
+        ts = time.strftime("%H:%M:%S")
+        self.log_queue.put(f"[{ts}] [{level}] {msg}")
+
+    def _rail_state_url(self):
+        return self.cfg["railway_url"].rstrip("/") + "/state"
+
+    def _rail_feedback_url(self):
+        return self.cfg["railway_url"].rstrip("/") + "/feedback"
+
+    def _fetch_locations(self):
+        """
+        Returns a set of (page,row,col) from /state.buttons.
+        """
+        try:
+            with urllib.request.urlopen(self._rail_state_url(), timeout=10) as resp:
+                data = json.loads(resp.read().decode("utf-8", errors="replace"))
+            buttons = data.get("buttons") or []
+            locs = set()
+            for b in buttons:
+                try:
+                    page = int(b.get("page"))
+                    row = int(b.get("row") or 0)
+                    col = int(b.get("col") or 0)
+                    locs.add((page, row, col))
+                except Exception:
+                    continue
+            return locs
+        except Exception as e:
+            self.log(f"Satellite: cannot fetch /state: {e}", "WARN")
+            return set()
+
+    def _subid_for(self, page, row, col):
+        return f"sub_{page}_{row}_{col}"
+
+    def _send_line(self, line):
+        if not self.sock:
+            return
+        if isinstance(line, str):
+            line = line.encode("utf-8")
+        self.sock.sendall(line + b"\n")
+
+    def _send_feedback(self, page, row, col, pressed, color, text):
+        loc_key = f"{page}/{row}/{col}"
+        key_state = (bool(pressed), color, text)
+        if self.last_sent.get(loc_key) == key_state:
+            return
+        self.last_sent[loc_key] = key_state
+
+        payload = {
+            "page": page,
+            "row": row,
+            "col": col,
+            "pressed": bool(pressed),
+            "color": color,
+            "text": text,
+        }
+
+        secret = self.cfg.get("api_secret", "")
+        req = urllib.request.Request(self._rail_feedback_url())
+        req.add_header("Content-Type", "application/json")
+        if secret:
+            req.add_header("x-api-secret", secret)
+        try:
+            data = json.dumps(payload).encode("utf-8")
+            req.method = "POST"
+            urllib.request.urlopen(req, data=data, timeout=5).read()
+        except Exception as e:
+            self.log(f"Satellite: POST /feedback failed: {e}", "WARN")
+
+    def _handle_line(self, line):
+        """
+        Parse a single Satellite protocol line.
+        """
+        try:
+            parts = shlex.split(line, posix=True)
+        except Exception:
+            parts = line.split()
+        if not parts:
+            return
+
+        cmd = parts[0]
+        if cmd in ("BEGIN", "CAPS", "OK"):
+            return
+
+        if cmd == "PING":
+            # Server is asking us to respond
+            payload = " ".join(parts[1:]) if len(parts) > 1 else ""
+            try:
+                self._send_line(f"PONG {payload}".strip())
+            except Exception:
+                pass
+            return
+
+        if cmd == "ERROR":
+            self.log(f"Satellite protocol error: {line}", "ERR")
+            return
+
+        if cmd != "SUB-STATE":
+            return
+
+        kv = {}
+        for tok in parts[1:]:
+            if "=" not in tok:
+                continue
+            k, v = tok.split("=", 1)
+            kv[k] = v
+
+        subid = kv.get("SUBID")
+        if not subid:
+            return
+        loc = self.subid_to_loc.get(subid)
+        if not loc:
+            return
+        page, row, col = loc
+
+        pressed_raw = kv.get("PRESSED", "0")
+        pressed = str(pressed_raw).lower() in ("1", "true")
+        color = kv.get("COLOR")  # usually #rrggbb or rgb(...)
+
+        text = None
+        if "TEXT" in kv:
+            try:
+                # TEXT is base64 encoded per Satellite API docs
+                text = base64.b64decode(kv["TEXT"]).decode("utf-8", errors="replace")
+            except Exception:
+                text = kv.get("TEXT")
+
+        self._send_feedback(page, row, col, pressed, color, text)
+
+    def run(self):
+        self.log("Satellite feedback started (Satellite API → /feedback)", "INFO")
+        while not self.stop_event.is_set():
+            host = normalize_companion_host(self.cfg.get("companion_host", "127.0.0.1"))
+            port = int(self.cfg.get("companion_satellite_port", 16622))
+
+            try:
+                # Connect
+                self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.sock.settimeout(5)
+                self.sock.connect((host, port))
+                self.sock.settimeout(None)
+                self.log(f"Satellite connected to {host}:{port}", "INFO")
+
+                # Reader state
+                buffer = b""
+                last_ping = 0.0
+                last_state_pull = 0.0
+
+                # Subscribe set reconciliation
+                self.subid_to_loc.clear()
+                self.current_subids.clear()
+                self.last_sent.clear()
+
+                while not self.stop_event.is_set():
+                    now = time.time()
+
+                    if now - last_ping > 2.0:
+                        try:
+                            self._send_line(f"PING {int(now)}")
+                        except Exception:
+                            pass
+                        last_ping = now
+
+                    if now - last_state_pull > 4.0:
+                        locs = self._fetch_locations()
+                        desired = set()
+                        for (page, row, col) in locs:
+                            subid = self._subid_for(page, row, col)
+                            desired.add(subid)
+                            self.subid_to_loc[subid] = (page, row, col)
+
+                        # Add missing subs
+                        for subid in desired - self.current_subids:
+                            page, row, col = self.subid_to_loc[subid]
+                            # Request color + text only (no bitmap for bandwidth)
+                            self._send_line(
+                                f'ADD-SUB SUBID={subid} LOCATION={page}/{row}/{col} BITMAP=0 COLORS=rgb TEXT=true'
+                            )
+                            self.log(f"Satellite: ADD-SUB {page}/{row}/{col} ({subid})", "INFO")
+
+                        # Remove stale subs
+                        for subid in self.current_subids - desired:
+                            self._send_line(f"REMOVE-SUB SUBID={subid}")
+
+                        self.current_subids = desired
+                        last_state_pull = now
+
+                    r, _, _ = select.select([self.sock], [], [], 0.25)
+                    if not r:
+                        continue
+
+                    chunk = self.sock.recv(4096)
+                    if not chunk:
+                        raise ConnectionError("Satellite socket closed")
+                    buffer += chunk
+
+                    while b"\n" in buffer:
+                        line, buffer = buffer.split(b"\n", 1)
+                        line = line.strip().decode("utf-8", errors="replace")
+                        if line:
+                            self._handle_line(line)
+
+            except Exception as e:
+                self.log(f"Satellite feedback error: {e}", "WARN")
+                try:
+                    if self.sock:
+                        self.sock.close()
+                except Exception:
+                    pass
+                self.sock = None
+                time.sleep(4)
+
 # ─── GUI ──────────────────────────────────────────────────────────────────────
 
 BG        = "#0d0f12"
@@ -234,6 +471,7 @@ class App(tk.Tk):
         self.log_queue   = queue.Queue()
         self.stop_event  = threading.Event()
         self.poller      = None
+        self.satellite   = None
         self.running     = False
 
         self._build_ui()
@@ -286,6 +524,7 @@ class App(tk.Tk):
             ("API Secret",       "api_secret",      "optional",                        True),
             ("Companion Host",   "companion_host",  "192.168.1.x",                     False),
             ("Companion OSC Port","companion_port", "12321",                            False),
+            ("Companion Satellite Port", "companion_satellite_port", "16622 (TCP)", False),
             ("Poll Interval (s)","poll_interval",   "1.0",                             False),
         ]
 
@@ -377,6 +616,8 @@ class App(tk.Tk):
         self.stop_event.clear()
         self.poller = Poller(self.cfg, self.log_queue, self.stop_event)
         self.poller.start()
+        self.satellite = SatelliteFeedback(self.cfg, self.log_queue, self.stop_event)
+        self.satellite.start()
         self.running = True
 
         self._set_status("RUNNING", SUCCESS)

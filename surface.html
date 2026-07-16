@@ -216,6 +216,7 @@
 
 <div id="toast"></div>
 
+<script src="/unlock.js"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════════
 // SERVER URL
@@ -247,16 +248,30 @@ function doSetup() {
   SERVER = val;
   localStorage.setItem('cb_server_url', SERVER);
   hideSetup();
-  init();
+  startApp();
 }
 
-if (SERVER) { hideSetup(); init(); }
+async function startApp() {
+  if (window.CBUnlock) {
+    await CBUnlock.require({
+      serverUrl: SERVER,
+      onUnlocked: () => init(),
+    });
+  } else {
+    init();
+  }
+}
+
+if (SERVER) { hideSetup(); startApp(); }
 
 // ═══════════════════════════════════════════════════════════════════
 // APP STATE
 // ═══════════════════════════════════════════════════════════════════
 let appState   = null;
 let activeView = localStorage.getItem('cb_view') || null;
+let feedbackTimer = null;
+// Map key: "page/row/col" -> { btnEl, labelEl }
+let feedbackEls = new Map();
 
 async function init() {
   setDot('loading');
@@ -330,6 +345,7 @@ function renderTabs() {
 function renderGrid() {
   const grid = document.getElementById('button-grid');
   grid.innerHTML = '';
+  feedbackEls.clear();
   if (!appState || !activeView || !appState.views[activeView]) { setCenterMsg('NO VIEW SELECTED'); return; }
   const ids  = appState.views[activeView].buttonIds || [];
   const btns = ids.map(id => appState.buttons.find(b => b.id === id)).filter(Boolean);
@@ -338,9 +354,13 @@ function renderGrid() {
   btns.forEach(btn => {
     const el = document.createElement('div');
     el.className = 'trig-btn';
+    const locKey = `${btn.page}/${btn.row ?? 0}/${btn.col ?? 0}`;
+    el.dataset.locKey = locKey;
     el.style.setProperty('--btn-color', btn.color);
     el.innerHTML = `<div class="trig-label">${esc(btn.label)}</div>
                     <div class="trig-meta">P${btn.page} R${btn.row??0} C${btn.col??0}</div>`;
+    const labelEl = el.querySelector('.trig-label');
+    feedbackEls.set(locKey, { btnEl: el, labelEl });
     const pressStart = () => el.classList.add('pressing');
     const pressEnd   = () => el.classList.remove('pressing');
     el.addEventListener('mousedown',  pressStart);
@@ -351,6 +371,42 @@ function renderGrid() {
     el.addEventListener('click', () => fireTrigger(btn, el));
     grid.appendChild(el);
   });
+  ensureFeedbackLoop();
+}
+
+// Companion feedback polling (color/text/pressed) for on-screen buttons.
+function applyFeedback(feedbackMap) {
+  if (!feedbackMap) return;
+  for (const [locKey, st] of Object.entries(feedbackMap)) {
+    const hit = feedbackEls.get(locKey);
+    if (!hit) continue;
+    if (st.color) {
+      hit.btnEl.style.setProperty('--btn-color', st.color);
+      hit.btnEl.style.background = st.color;
+    }
+    if (typeof st.text === 'string' && st.text) {
+      hit.labelEl.textContent = st.text;
+    }
+    if ('pressed' in st) {
+      hit.btnEl.classList.toggle('pressing', !!st.pressed);
+    }
+  }
+}
+
+async function pollFeedback() {
+  if (!SERVER || feedbackEls.size === 0) return;
+  try {
+    const r = await fetch(SERVER + '/feedback', { cache: 'no-store' });
+    if (!r.ok) return;
+    const data = await r.json();
+    applyFeedback(data.feedback || {});
+  } catch (_) {}
+}
+
+function ensureFeedbackLoop() {
+  if (feedbackTimer) return;
+  if (feedbackEls.size === 0) return;
+  feedbackTimer = setInterval(pollFeedback, 800);
 }
 
 // ═══════════════════════════════════════════════════════════════════

@@ -414,6 +414,35 @@
     </div>
   </div>
 
+  <!-- ── SECTION 0b: SECURITY ── -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-label">// 0b — ACCESS LOCK &nbsp;·&nbsp; PIN + color grid for Surface / Dashboard</div>
+    </div>
+    <div class="dash-config">
+      <div class="dash-config-row" style="align-items:flex-end;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:0.08em;">
+          <input type="checkbox" id="sec-enabled" style="accent-color:var(--accent);width:14px;height:14px;">
+          REQUIRE UNLOCK
+        </label>
+        <div class="field-group" style="flex:0 0 140px;">
+          <div class="field-lbl">PIN</div>
+          <input class="field" type="text" id="sec-pin" maxlength="8" placeholder="1615" autocomplete="off">
+        </div>
+        <div class="field-group" style="flex:1;min-width:200px;">
+          <div class="field-lbl">Color sequence (comma-separated)</div>
+          <input class="field" type="text" id="sec-colors" placeholder="red, green, blue" autocomplete="off">
+        </div>
+        <button class="tb-btn primary" id="btn-save-sec" style="margin-bottom:1px;">SAVE LOCK</button>
+      </div>
+      <div class="dash-hint">
+        Default unlock: PIN <strong>1615</strong>, then tap <strong>Red → Green → Blue</strong> on the color grid.
+        Color ids: red, orange, yellow, green, cyan, blue, purple, pink, white, gray, teal, lime.
+        Unlock lasts 8 hours per browser tab session.
+      </div>
+    </div>
+  </div>
+
   <!-- ── SECTION 1: BUTTONS ── -->
   <div class="section">
     <div class="section-head">
@@ -534,7 +563,12 @@ let pushTimer      = null; // debounce auto-push
 function uid() { return Math.random().toString(36).slice(2, 9); }
 
 function defaultState() {
-  return { buttons: [], views: {}, dashUrl: '' };
+  return {
+    buttons: [],
+    views: {},
+    dashUrl: '',
+    security: { enabled: true, pin: '1615', colors: ['red', 'green', 'blue'] },
+  };
 }
 
 function loadLocal() {
@@ -588,6 +622,11 @@ document.getElementById('btn-save-dash').addEventListener('click', async () => {
   saveLocal();
   await pushToServer(true);
 });
+document.getElementById('btn-save-sec').addEventListener('click', async () => {
+  readSecurityFields();
+  saveLocal();
+  await pushToServer(true);
+});
 document.getElementById('dash-url').addEventListener('change', saveDashUrlFromField);
 document.getElementById('dash-url').addEventListener('keydown', e => {
   if (e.key === 'Enter') {
@@ -597,6 +636,7 @@ document.getElementById('dash-url').addEventListener('keydown', e => {
 });
 
 syncDashUrlField();
+syncSecurityFields();
 
 // Build swatch picker
 const swatchWrap = document.getElementById('edit-swatches');
@@ -639,8 +679,14 @@ async function pullFromServer() {
     const data = await r.json();
     if (data.buttons && data.views !== undefined) {
       state = normalizeState(data);
+      // Load full security (pin/colors) with secret
+      try {
+        const sr = await apiFetch('/security');
+        if (sr.ok) state.security = await sr.json();
+      } catch (_) { /* keep defaults */ }
       saveLocal();
       syncDashUrlField();
+      syncSecurityFields();
       render();
       toast('Loaded from server', 'inf');
     }
@@ -663,10 +709,40 @@ function normalizeState(data) {
     delete out.bank;
     return out;
   });
+  const sec = data.security || {};
+  const prev = (typeof state !== 'undefined' && state?.security) ? state.security : null;
   return {
     buttons,
     views: data.views || {},
     dashUrl: typeof data.dashUrl === 'string' ? data.dashUrl.trim() : '',
+    security: {
+      enabled: sec.enabled !== false,
+      pin: String(sec.pin ?? prev?.pin ?? '1615'),
+      colors: Array.isArray(sec.colors) && sec.colors.length
+        ? sec.colors.map(c => String(c).toLowerCase())
+        : (prev?.colors || ['red', 'green', 'blue']),
+    },
+  };
+}
+
+function syncSecurityFields() {
+  const sec = state.security || { enabled: true, pin: '1615', colors: ['red', 'green', 'blue'] };
+  const en = document.getElementById('sec-enabled');
+  const pin = document.getElementById('sec-pin');
+  const colors = document.getElementById('sec-colors');
+  if (en) en.checked = sec.enabled !== false;
+  if (pin) pin.value = sec.pin || '1615';
+  if (colors) colors.value = (sec.colors || ['red', 'green', 'blue']).join(', ');
+}
+
+function readSecurityFields() {
+  const pin = (document.getElementById('sec-pin')?.value || '1615').trim() || '1615';
+  const colorsRaw = document.getElementById('sec-colors')?.value || 'red, green, blue';
+  const colors = colorsRaw.split(/[,\s]+/).map(c => c.trim().toLowerCase()).filter(Boolean);
+  state.security = {
+    enabled: !!document.getElementById('sec-enabled')?.checked,
+    pin,
+    colors: colors.length ? colors : ['red', 'green', 'blue'],
   };
 }
 
@@ -696,6 +772,7 @@ function saveDashUrlFromField() {
 
 async function pushToServer(manual = false) {
   readDashUrlField();
+  readSecurityFields();
   saveLocal();
   if (!serverUrl) {
     if (manual) toast('No server configured', 'warn');
