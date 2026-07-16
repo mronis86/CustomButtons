@@ -46,13 +46,35 @@ def _osc_build(address, *args):
             msg += struct.pack(">f", a)
     return msg
 
+def normalize_companion_host(host):
+    """Strip URL junk so users can paste IPs or accidental http:// URLs."""
+    host = (host or "").strip()
+    if not host:
+        return "127.0.0.1"
+    # http://192.168.1.10:8000/path → 192.168.1.10
+    for prefix in ("http://", "https://"):
+        if host.lower().startswith(prefix):
+            host = host[len(prefix):]
+            break
+    host = host.split("/")[0].strip()
+    # drop accidental :port in host field (port has its own field)
+    if host.count(":") == 1 and not host.startswith("["):
+        maybe_ip, maybe_port = host.rsplit(":", 1)
+        if maybe_port.isdigit():
+            host = maybe_ip
+    host = host.strip("[]")  # IPv6 brackets if someone used them alone
+    return host or "127.0.0.1"
+
 def send_osc(host, port, address, *args):
+    host = normalize_companion_host(host)
+    port = int(port)
     data = _osc_build(address, *args)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
-        sock.sendto(data, (host, int(port)))
+        sock.sendto(data, (host, port))
     finally:
         sock.close()
+    return host, port
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -173,11 +195,16 @@ class Poller(threading.Thread):
     def _fire_osc(self, page, row, col):
         host    = self.cfg["companion_host"]
         port    = self.cfg["companion_port"]
-        # Companion 3.x+: /location/{page}/{row}/{column}/press
+        # Companion 3.x / 4.x: /location/{page}/{row}/{column}/press
         address = f"/location/{page}/{row}/{col}/press"
         try:
-            send_osc(host, port, address)
+            host, port = send_osc(host, port, address)
             self.log(f"OSC  {address}  →  {host}:{port}", "OSC")
+        except OSError as e:
+            self.log(
+                f"OSC failed ({e}) — check Companion Host is an IP like 127.0.0.1 or 192.168.x.x (not a URL)",
+                "ERR",
+            )
         except Exception as e:
             self.log(f"OSC failed: {e}", "ERR")
 
@@ -371,11 +398,23 @@ class App(tk.Tk):
             self.cfg[key] = entry.get().strip()
         host = self.cfg.get("companion_host", "127.0.0.1")
         port = self.cfg.get("companion_port", "12321")
-        # Companion 3.5.5: page 1, row 0, column 0
+        # Companion 3.x / 4.x: page 1, row 0, column 0
         address = "/location/1/0/0/press"
         try:
-            send_osc(host, int(port), address)
+            host, port = send_osc(host, port, address)
+            # Reflect cleaned host back into the field
+            if "companion_host" in self.fields:
+                self.fields["companion_host"].delete(0, "end")
+                self.fields["companion_host"].insert(0, host)
+                self.cfg["companion_host"] = host
+                save_config(self.cfg)
             self._log(f"TEST OSC  {address}  →  {host}:{port}", "OK")
+            self._log("If Companion did not fire: enable OSC Listener in Companion Settings (port 12321)", "INFO")
+        except OSError as e:
+            self._log(
+                f"TEST OSC failed: {e} — Companion Host must be an IP/hostname (e.g. 127.0.0.1), not a URL",
+                "ERR",
+            )
         except Exception as e:
             self._log(f"TEST OSC failed: {e}", "ERR")
 
