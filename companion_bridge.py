@@ -214,10 +214,48 @@ class Poller(threading.Thread):
 
 # ─── Satellite feedback thread ─────────────────────────────────────────────
 
+def _parse_port(raw, default=16622):
+    s = str(raw or "").strip()
+    digits = "".join(ch for ch in s if ch.isdigit())
+    try:
+        return int(digits) if digits else default
+    except ValueError:
+        return default
+
+def _parse_kv_line(line):
+    """Parse Satellite protocol line into (cmd, {key: value})."""
+    try:
+        parts = shlex.split(line, posix=True)
+    except Exception:
+        parts = line.split()
+    if not parts:
+        return None, {}
+    cmd = parts[0]
+    kv = {}
+    for tok in parts[1:]:
+        if "=" not in tok:
+            continue
+        k, v = tok.split("=", 1)
+        if len(v) >= 2 and v[0] == v[-1] and v[0] in "\"'":
+            v = v[1:-1]
+        kv[k] = v
+    return cmd, kv
+
+def _decode_b64_text(raw):
+    if raw is None:
+        return None
+    try:
+        return base64.b64decode(raw).decode("utf-8", errors="replace")
+    except Exception:
+        return raw
+
 class SatelliteFeedback(threading.Thread):
     """
-    Subscribe to Companion's Satellite API button state and push updates to Railway.
-    We use this to drive UI feedback (color/text/pressed).
+    Pull Companion button style/pressed state via Satellite API and POST to Railway.
+
+    Companion 4.3+ (Satellite API 1.10+): ADD-SUB per page/row/col (preferred).
+    Companion 4.2.x: ADD-DEVICE surface fallback — maps KEY row/col onto each
+    page that appears in the button layout (one virtual surface per page).
     """
 
     def __init__(self, cfg, log_queue, stop_event):
@@ -225,47 +263,38 @@ class SatelliteFeedback(threading.Thread):
         self.cfg = cfg
         self.log_queue = log_queue
         self.stop_event = stop_event
-
-        self.subid_to_loc = {}  # SUBID -> (page,row,col)
-        self.current_subids = set()
-        self.last_sent = {}  # locKey -> (pressed,color,text)
-
         self.sock = None
+        self.api_version = (0, 0, 0)
+        self.subscriptions_ok = False
+        self.subid_to_loc = {}
+        self.current_subids = set()
+        self.device_pages = set()  # pages we registered as surfaces
+        self.last_sent = {}
+        self.pending = []  # batch POSTs
+        self.last_flush = 0.0
 
     def log(self, msg, level="INFO"):
         ts = time.strftime("%H:%M:%S")
         self.log_queue.put(f"[{ts}] [{level}] {msg}")
 
-    def _rail_state_url(self):
-        return self.cfg["railway_url"].rstrip("/") + "/state"
-
-    def _rail_feedback_url(self):
-        return self.cfg["railway_url"].rstrip("/") + "/feedback"
+    def _rail(self, path):
+        return self.cfg["railway_url"].rstrip("/") + path
 
     def _fetch_locations(self):
-        """
-        Returns a set of (page,row,col) from /state.buttons.
-        """
         try:
-            with urllib.request.urlopen(self._rail_state_url(), timeout=10) as resp:
+            req = urllib.request.Request(self._rail("/state"))
+            with urllib.request.urlopen(req, timeout=10) as resp:
                 data = json.loads(resp.read().decode("utf-8", errors="replace"))
-            buttons = data.get("buttons") or []
             locs = set()
-            for b in buttons:
+            for b in (data.get("buttons") or []):
                 try:
-                    page = int(b.get("page"))
-                    row = int(b.get("row") or 0)
-                    col = int(b.get("col") or 0)
-                    locs.add((page, row, col))
+                    locs.add((int(b["page"]), int(b.get("row") or 0), int(b.get("col") or 0)))
                 except Exception:
                     continue
             return locs
         except Exception as e:
             self.log(f"Satellite: cannot fetch /state: {e}", "WARN")
             return set()
-
-    def _subid_for(self, page, row, col):
-        return f"sub_{page}_{row}_{col}"
 
     def _send_line(self, line):
         if not self.sock:
@@ -274,117 +303,233 @@ class SatelliteFeedback(threading.Thread):
             line = line.encode("utf-8")
         self.sock.sendall(line + b"\n")
 
-    def _send_feedback(self, page, row, col, pressed, color, text):
-        loc_key = f"{page}/{row}/{col}"
-        key_state = (bool(pressed), color, text)
-        if self.last_sent.get(loc_key) == key_state:
-            return
-        self.last_sent[loc_key] = key_state
-
-        payload = {
+    def _queue_feedback(self, page, row, col, pressed=None, color=None, text=None):
+        self.pending.append({
             "page": page,
             "row": row,
             "col": col,
-            "pressed": bool(pressed),
+            "pressed": pressed,
             "color": color,
             "text": text,
-        }
+        })
 
+    def _flush_feedback(self, force=False):
+        now = time.time()
+        if not self.pending:
+            return
+        if not force and (now - self.last_flush) < 0.25:
+            return
+        updates = self.pending
+        self.pending = []
+        self.last_flush = now
+
+        # Dedupe by loc, keep last
+        merged = {}
+        for u in updates:
+            key = f"{u['page']}/{u['row']}/{u['col']}"
+            prev = merged.get(key, {})
+            merged[key] = {
+                "page": u["page"],
+                "row": u["row"],
+                "col": u["col"],
+                "pressed": u["pressed"] if u["pressed"] is not None else prev.get("pressed"),
+                "color": u["color"] if u["color"] else prev.get("color"),
+                "text": u["text"] if u["text"] else prev.get("text"),
+            }
+
+        payload = {"updates": list(merged.values())}
         secret = self.cfg.get("api_secret", "")
-        req = urllib.request.Request(self._rail_feedback_url())
-        req.add_header("Content-Type", "application/json")
+        data = json.dumps(payload).encode("utf-8")
+        headers = {"Content-Type": "application/json"}
         if secret:
-            req.add_header("x-api-secret", secret)
+            headers["x-api-secret"] = secret
         try:
-            data = json.dumps(payload).encode("utf-8")
-            req.method = "POST"
-            urllib.request.urlopen(req, data=data, timeout=5).read()
+            req = urllib.request.Request(
+                self._rail("/feedback"), data=data, headers=headers, method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                resp.read()
+            self.log(f"Satellite: pushed {len(merged)} feedback update(s)", "INFO")
         except Exception as e:
             self.log(f"Satellite: POST /feedback failed: {e}", "WARN")
 
-    def _handle_line(self, line):
-        """
-        Parse a single Satellite protocol line.
-        """
+    def _parse_api_version(self, raw):
         try:
-            parts = shlex.split(line, posix=True)
+            parts = [int(x) for x in str(raw).split(".")[:3]]
+            while len(parts) < 3:
+                parts.append(0)
+            return tuple(parts)
         except Exception:
-            parts = line.split()
-        if not parts:
+            return (0, 0, 0)
+
+    def _handle_line(self, line):
+        cmd, kv = _parse_kv_line(line)
+        if not cmd:
             return
 
-        cmd = parts[0]
-        if cmd in ("BEGIN", "CAPS", "OK"):
+        if cmd == "BEGIN":
+            self.api_version = self._parse_api_version(kv.get("ApiVersion", "0.0.0"))
+            self.log(
+                f"Satellite BEGIN ApiVersion={kv.get('ApiVersion')} Companion={kv.get('CompanionVersion')}",
+                "INFO",
+            )
+            return
+
+        if cmd == "CAPS":
+            self.subscriptions_ok = str(kv.get("SUBSCRIPTIONS", "0")) in ("1", "true")
+            self.log(f"Satellite CAPS subscriptions={self.subscriptions_ok}", "INFO")
             return
 
         if cmd == "PING":
-            # Server is asking us to respond
-            payload = " ".join(parts[1:]) if len(parts) > 1 else ""
+            payload = " ".join(f"{k}={v}" for k, v in kv.items()) if kv else ""
+            # PING may also be: PING 12345
+            if not payload and "=" not in line:
+                parts = line.split(None, 1)
+                payload = parts[1] if len(parts) > 1 else ""
             try:
                 self._send_line(f"PONG {payload}".strip())
             except Exception:
                 pass
             return
 
+        if cmd.endswith("ERROR") or (len(line.split()) >= 2 and line.split()[1] == "ERROR"):
+            self.log(f"Satellite: {line}", "ERR")
+            return
+
         if cmd == "ERROR":
-            self.log(f"Satellite protocol error: {line}", "ERR")
+            self.log(f"Satellite: {line}", "ERR")
             return
 
-        if cmd != "SUB-STATE":
+        if cmd == "SUB-STATE":
+            subid = kv.get("SUBID")
+            loc = self.subid_to_loc.get(subid)
+            if not loc:
+                return
+            page, row, col = loc
+            pressed = str(kv.get("PRESSED", "0")).lower() in ("1", "true")
+            color = kv.get("COLOR")
+            text = _decode_b64_text(kv.get("TEXT"))
+            self._queue_feedback(page, row, col, pressed=pressed, color=color, text=text)
             return
 
-        kv = {}
-        for tok in parts[1:]:
-            if "=" not in tok:
+        if cmd == "KEY-STATE":
+            # Surface fallback (Companion < 4.3 / no subscriptions)
+            device = kv.get("DEVICEID", "")
+            page = None
+            if device.startswith("cbpage_"):
+                try:
+                    page = int(device.split("_", 1)[1])
+                except Exception:
+                    page = None
+
+            row = col = None
+            loc = kv.get("LOCATION")  # page/row/col when API >= 1.10
+            if loc and loc.count("/") == 2:
+                try:
+                    p, r, c = loc.split("/")
+                    page = int(p)
+                    row = int(r)
+                    col = int(c)
+                except Exception:
+                    pass
+
+            key = kv.get("KEY") or kv.get("CONTROLID")
+            if row is None and key:
+                # KEY may be "0/0" or an index
+                if "/" in str(key):
+                    try:
+                        row, col = [int(x) for x in str(key).split("/")[:2]]
+                    except Exception:
+                        pass
+                else:
+                    try:
+                        idx = int(key)
+                        cols = 8
+                        row, col = divmod(idx, cols)
+                    except Exception:
+                        pass
+
+            if page is None or row is None or col is None:
+                return
+
+            pressed = str(kv.get("PRESSED", "0")).lower() in ("1", "true")
+            color = kv.get("COLOR")
+            text = _decode_b64_text(kv.get("TEXT"))
+            self._queue_feedback(page, row, col, pressed=pressed, color=color, text=text)
+            return
+
+        # Ignore OK / unknown chatter
+
+    def _sync_subscriptions(self, locs):
+        desired = set()
+        for page, row, col in locs:
+            subid = f"sub_{page}_{row}_{col}"
+            desired.add(subid)
+            self.subid_to_loc[subid] = (page, row, col)
+
+        for subid in desired - self.current_subids:
+            page, row, col = self.subid_to_loc[subid]
+            self._send_line(
+                f"ADD-SUB SUBID={subid} LOCATION={page}/{row}/{col} "
+                f"BITMAP=0 COLORS=hex TEXT=true"
+            )
+            self.log(f"Satellite: ADD-SUB {page}/{row}/{col}", "INFO")
+
+        for subid in self.current_subids - desired:
+            self._send_line(f"REMOVE-SUB SUBID={subid}")
+            self.subid_to_loc.pop(subid, None)
+
+        self.current_subids = desired
+
+    def _sync_surfaces(self, locs):
+        """Companion 4.2 fallback: one virtual surface per page."""
+        pages = sorted({p for p, _, _ in locs})
+        # Determine grid size from locs
+        max_row = max((r for _, r, _ in locs), default=3)
+        max_col = max((c for _, _, c in locs), default=7)
+        keys_per_row = max(max_col + 1, 8)
+        keys_total = keys_per_row * max(max_row + 1, 4)
+
+        for page in pages:
+            if page in self.device_pages:
                 continue
-            k, v = tok.split("=", 1)
-            kv[k] = v
-
-        subid = kv.get("SUBID")
-        if not subid:
-            return
-        loc = self.subid_to_loc.get(subid)
-        if not loc:
-            return
-        page, row, col = loc
-
-        pressed_raw = kv.get("PRESSED", "0")
-        pressed = str(pressed_raw).lower() in ("1", "true")
-        color = kv.get("COLOR")  # usually #rrggbb or rgb(...)
-
-        text = None
-        if "TEXT" in kv:
-            try:
-                # TEXT is base64 encoded per Satellite API docs
-                text = base64.b64decode(kv["TEXT"]).decode("utf-8", errors="replace")
-            except Exception:
-                text = kv.get("TEXT")
-
-        self._send_feedback(page, row, col, pressed, color, text)
+            device_id = f"cbpage_{page}"
+            # Simple surface — user must set this surface's page in Companion UI once
+            self._send_line(
+                f'ADD-DEVICE DEVICEID={device_id} PRODUCT_NAME="CB Feedback P{page}" '
+                f"KEYS_TOTAL={keys_total} KEYS_PER_ROW={keys_per_row} "
+                f"BITMAPS=0 COLORS=hex TEXT=true"
+            )
+            self.device_pages.add(page)
+            self.log(
+                f"Satellite: ADD-DEVICE {device_id} — in Companion Surfaces, "
+                f"set this device to page {page}",
+                "WARN",
+            )
 
     def run(self):
-        self.log("Satellite feedback started (Satellite API → /feedback)", "INFO")
+        self.log("Satellite feedback started", "INFO")
         while not self.stop_event.is_set():
             host = normalize_companion_host(self.cfg.get("companion_host", "127.0.0.1"))
-            port = int(self.cfg.get("companion_satellite_port", 16622))
+            port = _parse_port(self.cfg.get("companion_satellite_port"), 16622)
 
             try:
-                # Connect
                 self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self.sock.settimeout(5)
                 self.sock.connect((host, port))
                 self.sock.settimeout(None)
-                self.log(f"Satellite connected to {host}:{port}", "INFO")
+                self.log(f"Satellite connected {host}:{port}", "OK")
 
-                # Reader state
                 buffer = b""
                 last_ping = 0.0
-                last_state_pull = 0.0
-
-                # Subscribe set reconciliation
+                last_sync = 0.0
+                self.api_version = (0, 0, 0)
+                self.subscriptions_ok = False
                 self.subid_to_loc.clear()
                 self.current_subids.clear()
-                self.last_sent.clear()
+                self.device_pages.clear()
+                self.pending = []
+                greeted = False
 
                 while not self.stop_event.is_set():
                     now = time.time()
@@ -396,44 +541,44 @@ class SatelliteFeedback(threading.Thread):
                             pass
                         last_ping = now
 
-                    if now - last_state_pull > 4.0:
+                    self._flush_feedback()
+
+                    if greeted and (now - last_sync > 5.0):
                         locs = self._fetch_locations()
-                        desired = set()
-                        for (page, row, col) in locs:
-                            subid = self._subid_for(page, row, col)
-                            desired.add(subid)
-                            self.subid_to_loc[subid] = (page, row, col)
-
-                        # Add missing subs
-                        for subid in desired - self.current_subids:
-                            page, row, col = self.subid_to_loc[subid]
-                            # Request color + text only (no bitmap for bandwidth)
-                            self._send_line(
-                                f'ADD-SUB SUBID={subid} LOCATION={page}/{row}/{col} BITMAP=0 COLORS=rgb TEXT=true'
-                            )
-                            self.log(f"Satellite: ADD-SUB {page}/{row}/{col} ({subid})", "INFO")
-
-                        # Remove stale subs
-                        for subid in self.current_subids - desired:
-                            self._send_line(f"REMOVE-SUB SUBID={subid}")
-
-                        self.current_subids = desired
-                        last_state_pull = now
+                        if locs:
+                            # Prefer ADD-SUB when API supports it (Companion 4.3+)
+                            use_subs = self.subscriptions_ok or self.api_version >= (1, 10, 0)
+                            if use_subs:
+                                self._sync_subscriptions(locs)
+                            else:
+                                if self.api_version and self.api_version < (1, 10, 0):
+                                    self.log(
+                                        "Satellite API < 1.10 (Companion 4.2.x): "
+                                        "using surface fallback — assign each CB Feedback surface to its page in Companion",
+                                        "WARN",
+                                    )
+                                self._sync_surfaces(locs)
+                        last_sync = now
 
                     r, _, _ = select.select([self.sock], [], [], 0.25)
                     if not r:
                         continue
 
-                    chunk = self.sock.recv(4096)
+                    chunk = self.sock.recv(8192)
                     if not chunk:
                         raise ConnectionError("Satellite socket closed")
                     buffer += chunk
 
                     while b"\n" in buffer:
-                        line, buffer = buffer.split(b"\n", 1)
-                        line = line.strip().decode("utf-8", errors="replace")
-                        if line:
-                            self._handle_line(line)
+                        raw, buffer = buffer.split(b"\n", 1)
+                        line = raw.strip().decode("utf-8", errors="replace")
+                        if not line:
+                            continue
+                        if line.startswith("BEGIN"):
+                            greeted = True
+                        self._handle_line(line)
+
+                self._flush_feedback(force=True)
 
             except Exception as e:
                 self.log(f"Satellite feedback error: {e}", "WARN")
@@ -524,7 +669,7 @@ class App(tk.Tk):
             ("API Secret",       "api_secret",      "optional",                        True),
             ("Companion Host",   "companion_host",  "192.168.1.x",                     False),
             ("Companion OSC Port","companion_port", "12321",                            False),
-            ("Companion Satellite Port", "companion_satellite_port", "16622 (TCP)", False),
+            ("Companion Satellite Port", "companion_satellite_port", "16622", False),
             ("Poll Interval (s)","poll_interval",   "1.0",                             False),
         ]
 
@@ -598,7 +743,16 @@ class App(tk.Tk):
     # ── Field changes ─────────────────────────────────────────────────────────
 
     def _field_changed(self, key, entry):
-        self.cfg[key] = entry.get().strip()
+        val = entry.get().strip()
+        if key == "companion_satellite_port":
+            val = str(_parse_port(val, 16622))
+            entry.delete(0, "end")
+            entry.insert(0, val)
+        if key == "companion_host":
+            val = normalize_companion_host(val)
+            entry.delete(0, "end")
+            entry.insert(0, val)
+        self.cfg[key] = val
         save_config(self.cfg)
 
     # ── Controls ─────────────────────────────────────────────────────────────

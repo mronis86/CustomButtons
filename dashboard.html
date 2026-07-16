@@ -486,21 +486,37 @@ function renderButtons() {
 }
 
 // Companion feedback polling (color/text/pressed) for on-screen buttons.
+function normalizeFeedbackColor(c) {
+  if (!c || typeof c !== 'string') return null;
+  c = c.trim();
+  if (c.startsWith('#')) return c;
+  const m = c.match(/rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/i);
+  if (m) return `rgb(${m[1]}, ${m[2]}, ${m[3]})`;
+  return c;
+}
+
 function applyFeedback(feedbackMap) {
   if (!feedbackMap) return;
+  let hits = 0;
   for (const [locKey, st] of Object.entries(feedbackMap)) {
     const hit = feedbackEls.get(locKey);
     if (!hit) continue;
-    if (st.color) {
-      hit.btnEl.style.setProperty('--btn-color', st.color);
-      hit.btnEl.style.background = st.color;
+    hits += 1;
+    const color = normalizeFeedbackColor(st.color);
+    if (color) {
+      hit.btnEl.style.setProperty('--btn-color', color);
+      hit.btnEl.style.background = color;
     }
-    if (typeof st.text === 'string' && st.text) {
-      hit.labelEl.textContent = st.text;
+    if (typeof st.text === 'string' && st.text.trim()) {
+      hit.labelEl.textContent = st.text.trim();
     }
     if ('pressed' in st) {
       hit.btnEl.classList.toggle('pressing', !!st.pressed);
     }
+  }
+  if (hits && !applyFeedback._noted) {
+    applyFeedback._noted = true;
+    toast('Companion feedback live', 'ok');
   }
 }
 
@@ -518,6 +534,7 @@ function ensureFeedbackLoop() {
   if (feedbackTimer) return;
   if (feedbackEls.size === 0) return;
   feedbackTimer = setInterval(pollFeedback, 900);
+  pollFeedback();
 }
 
 async function fireTrigger(btn, screenEl) {

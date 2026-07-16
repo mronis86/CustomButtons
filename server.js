@@ -193,21 +193,31 @@ function locKey(page, row, col) {
 
 // Accept updates pushed by the local Python bridge.
 app.post('/feedback', checkSecret, (req, res) => {
-  const { page, row, col, pressed, color, text } = req.body || {};
-  const p = Number(page);
-  const r = Number(row);
-  const c = Number(col);
-  if (!Number.isFinite(p) || !Number.isFinite(r) || !Number.isFinite(c)) {
-    return res.status(400).json({ error: 'Expected numeric page/row/col' });
+  const body = req.body || {};
+  // Batch: { updates: [ {page,row,col,...}, ... ] } or single object
+  const items = Array.isArray(body.updates) ? body.updates : [body];
+  let n = 0;
+  for (const item of items) {
+    const p = Number(item.page);
+    const r = Number(item.row);
+    const c = Number(item.col);
+    if (!Number.isFinite(p) || !Number.isFinite(r) || !Number.isFinite(c)) continue;
+    const key = locKey(p, r, c);
+    const prev = buttonFeedback.get(key) || {};
+    buttonFeedback.set(key, {
+      pressed: item.pressed !== undefined ? !!item.pressed : !!prev.pressed,
+      color: typeof item.color === 'string' && item.color
+        ? item.color
+        : (prev.color || null),
+      text: typeof item.text === 'string' && item.text
+        ? item.text
+        : (prev.text || null),
+      updatedAt: Date.now(),
+    });
+    n += 1;
   }
-  const key = locKey(p, r, c);
-  buttonFeedback.set(key, {
-    pressed: !!pressed,
-    color: typeof color === 'string' ? color : null,
-    text: typeof text === 'string' ? text : null,
-    updatedAt: Date.now(),
-  });
-  res.json({ ok: true });
+  if (!n) return res.status(400).json({ error: 'Expected page/row/col updates' });
+  res.json({ ok: true, count: n });
 });
 
 // Let the browser poll the latest feedback for on-screen buttons.
@@ -215,11 +225,16 @@ app.get('/feedback', (req, res) => {
   const now = Date.now();
   const out = {};
   for (const [k, v] of buttonFeedback.entries()) {
-    // prune entries older than ~15s
-    if (now - v.updatedAt > 15000) continue;
+    // Keep last-known state for a long time (Companion only sends on change)
+    if (now - v.updatedAt > 6 * 60 * 60 * 1000) continue;
     out[k] = { pressed: v.pressed, color: v.color, text: v.text };
   }
-  res.json({ ok: true, feedback: out, updatedAt: now });
+  res.json({
+    ok: true,
+    feedback: out,
+    count: Object.keys(out).length,
+    updatedAt: now,
+  });
 });
 
 // ── In-memory state ───────────────────────────────────────────────────────────
@@ -264,6 +279,7 @@ app.get('/health', (req, res) => res.json({
   queued: triggerQueue.length,
   mode: 'osc-relay',
   osc: 'location', // Companion 3.x /location/{page}/{row}/{col}/press
+  feedbackCount: buttonFeedback.size,
 }));
 
 app.get('/state', (req, res) => {

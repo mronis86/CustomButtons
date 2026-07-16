@@ -16,3 +16,9 @@ Requirements
 
 OSC format used:
   /location/{page}/{row}/{column}/press
+
+Feedback (button color / text / pressed):
+- Bridge also connects to Companion Satellite TCP port 16622
+- Companion 4.3+: automatic per-button subscriptions
+- Companion 4.2.x: creates "CB Feedback P#" surfaces — in Companion → Surfaces,
+  set each of those to the matching page number
